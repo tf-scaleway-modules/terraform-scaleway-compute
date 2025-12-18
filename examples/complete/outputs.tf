@@ -1,39 +1,34 @@
-output "instance_ids" {
-  description = "IDs of the created instances"
-  value       = module.compute.instance_ids
+output "instances" {
+  description = "All instances with their details"
+  value       = module.compute.instances
 }
 
-output "instance_names" {
-  description = "Names of the created instances"
-  value       = module.compute.instance_names
+output "instances_by_group" {
+  description = "Instances grouped by group name"
+  value       = module.compute.instances_by_group
 }
 
 output "public_ips" {
-  description = "Public IP addresses of the instances"
-  value       = module.compute.instance_public_ips
+  description = "Public IP addresses"
+  value       = module.compute.public_ips
 }
 
 output "private_ips" {
-  description = "Private IP addresses of the instances"
-  value       = module.compute.instance_private_ips
+  description = "Private IP addresses"
+  value       = module.compute.private_ips
 }
 
 output "security_group_id" {
-  description = "ID of the security group"
+  description = "Security group ID"
   value       = module.compute.security_group_id
 }
 
-output "private_network_id" {
-  description = "ID of the private network"
-  value       = module.compute.private_network_id
-}
-
 output "placement_group_id" {
-  description = "ID of the placement group"
+  description = "Placement group ID"
   value       = module.compute.placement_group_id
 }
 
-output "instances" {
-  description = "Full instance details"
-  value       = module.compute.instances
+output "volumes" {
+  description = "Additional volumes"
+  value       = module.compute.volumes
 }

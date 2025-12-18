@@ -9,15 +9,15 @@ A production-ready Terraform module for creating and managing **Scaleway** Compu
 
 ## Features
 
-- **Compute Instances**: Create multiple instances with flexible configuration
-- **Security Groups**: Configurable inbound/outbound rules with dynamic blocks
-- **Private Networks (VPC)**: Optional VPC creation with IPv4/IPv6 subnets
-- **Block Storage**: Support for additional volumes per instance
+- **Multi-Instance Groups**: Define multiple groups (backend, frontend, database) with different configurations
+- **Security Groups**: Shared security group with configurable inbound/outbound rules
+- **Private Networks**: Connect instances to existing VPC private networks
+- **Block Storage**: Additional volumes per instance group
 - **Placement Groups**: High availability or low latency configurations
-- **Cloud-Init**: Full cloud-init and user data support
+- **Cloud-Init**: Full cloud-init and user data support per group
 - **SSH Keys**: Automatic SSH key management
-- **Backup Snapshots**: Optional snapshot creation for backups
-- **Reserved IPs**: Static public IP allocation
+- **Backup Snapshots**: Optional snapshot creation per instance group
+- **Reserved IPs**: Static public IP allocation per instance
 
 ## Usage Examples
 
@@ -30,65 +30,76 @@ Comprehensive examples are available in the [`examples/`](examples/) directory:
 
 ```hcl
 module "compute" {
-  source  = "git::https://gitlab.com/leminnov/terraform/modules/scaleway-compute.git"
+  source = "git::https://gitlab.com/leminnov/terraform/modules/scaleway-compute.git"
 
-  name        = "my-server"
-  environment = "dev"
+  organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  project_name    = "myproject"
 
-  instance_count = 1
-  instance_type  = "DEV1-S"
-  image          = "ubuntu_noble"
+  instances = {
+    web = {
+      count         = 1
+      instance_type = "DEV1-S"
+    }
+  }
 
   inbound_rules = [
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 22
-      ip_range = "0.0.0.0/0"
-    }
+    { protocol = "TCP", port = 22 }
   ]
 }
 ```
 
-### Production Setup
+### Production Setup with Multiple Instance Groups
 
 ```hcl
 module "compute" {
-  source  = "git::https://gitlab.com/leminnov/terraform/modules/scaleway-compute.git"
+  source = "git::https://gitlab.com/leminnov/terraform/modules/scaleway-compute.git"
 
-  name        = "web-cluster"
-  environment = "prod"
-  zone        = "fr-par-1"
+  organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  project_name    = "ecommerce"
+  zone            = "fr-par-1"
 
-  # Multiple instances with HA placement
-  instance_count              = 3
-  instance_type               = "GP1-S"
-  image                       = "ubuntu_noble"
+  tags = ["production"]
+
+  # Multiple instance groups with different configurations
+  instances = {
+    backend = {
+      count               = 3
+      instance_type       = "GP1-S"
+      image               = "ubuntu_noble"
+      root_volume_size_gb = 50
+      tags                = ["backend", "api"]
+
+      cloud_init = <<-EOF
+        #cloud-config
+        packages: [docker.io]
+      EOF
+    }
+
+    frontend = {
+      count               = 2
+      instance_type       = "DEV1-M"
+      image               = "ubuntu_noble"
+      root_volume_size_gb = 30
+      tags                = ["frontend", "web"]
+    }
+
+    database = {
+      count                  = 1
+      instance_type          = "GP1-M"
+      enable_backup_snapshot = true
+      additional_volumes     = [{ size_gb = 200, type = "b_ssd" }]
+    }
+  }
+
+  # HA placement
   create_placement_group      = true
   placement_group_policy_type = "max_availability"
 
-  # Private network
-  create_private_network      = true
-  private_network_ipv4_subnet = "10.0.0.0/24"
-
-  # Additional storage
-  additional_volumes = [
-    { size_gb = 100, type = "b_ssd" }
-  ]
-
   # Security rules
-  inbound_default_policy = "drop"
   inbound_rules = [
     { protocol = "TCP", port = 22, ip_range = "10.0.0.0/8" },
-    { protocol = "TCP", port = 443, ip_range = "0.0.0.0/0" },
+    { protocol = "TCP", port = 443 },
   ]
-
-  # Cloud-init
-  cloud_init = <<-EOF
-    #cloud-config
-    package_update: true
-    packages: [nginx]
-  EOF
 }
 ```
 
