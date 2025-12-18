@@ -1,6 +1,8 @@
-# data "scaleway_instance_image" "image" {
-#   count = var.node_count > 0 ? 1 : 0
+# ==============================================================================
+# Data Sources
+# ==============================================================================
 
-#   architecture = var.server_arch
-#   name         = var.server_image
-# }
+data "scaleway_account_project" "project" {
+  name            = var.project_name
+  organization_id = var.organization_id
+}
