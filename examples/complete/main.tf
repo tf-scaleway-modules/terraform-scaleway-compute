@@ -19,7 +19,7 @@
 
 resource "scaleway_vpc_private_network" "this" {
   name       = "complete-example-vpc"
-  project_id = "f3d8393e-008a-4fb2-a4ff-81b6fe5c01b0"
+  project_id = "d9191cb0-d164-47ec-8d04-2b1dd8dad3eb"
   region     = "fr-par"
   tags       = ["terraform", "managed", "complete-example"]
 }
@@ -100,7 +100,7 @@ module "compute" {
     # Frontend Web Servers (4 instances)
     # --------------------------------------------------------------------------
     frontend = {
-      count         = 0
+      count         = 2
       instance_type = "DEV1-M"
       image         = "ubuntu_noble"
 
@@ -138,7 +138,7 @@ module "compute" {
     # Database Server (1 instance with additional volumes and backup)
     # --------------------------------------------------------------------------
     database = {
-      count         = 0
+      count         = 3
       instance_type = "GP1-M"
       image         = "ubuntu_noble"
 
@@ -148,11 +148,8 @@ module "compute" {
 
       tags = ["database", "postgres", "tier:data"]
 
-      # Additional block volumes for data storage
-      additional_volumes = [
-        { size_gb = 200, type = "b_ssd" }, # Data volume
-        { size_gb = 100, type = "b_ssd" }, # WAL/logs volume
-      ]
+      # Note: Additional block volumes require scaleway_block_volume resource
+      # The legacy b_ssd type is no longer supported by Scaleway
 
       # Enable backup snapshots for data protection
       enable_backup_snapshot = true
@@ -176,7 +173,7 @@ module "compute" {
     # Cache Servers (2 instances)
     # --------------------------------------------------------------------------
     cache = {
-      count         = 0
+      count         = 2
       instance_type = "DEV1-S"
       image         = "ubuntu_noble"
 
@@ -204,7 +201,7 @@ module "compute" {
     # Bastion/Jump Host (1 instance)
     # --------------------------------------------------------------------------
     bastion = {
-      count         = 0
+      count         = 2
       instance_type = "DEV1-S"
       image         = "ubuntu_noble"
 
@@ -236,7 +233,7 @@ module "compute" {
     # Worker/Job Servers (2 instances - can be stopped when not needed)
     # --------------------------------------------------------------------------
     worker = {
-      count         = 0
+      count         = 4
       instance_type = "DEV1-M"
       image         = "ubuntu_noble"
 
@@ -248,9 +245,7 @@ module "compute" {
 
       tags = ["worker", "jobs", "tier:processing"]
 
-      additional_volumes = [
-        { size_gb = 100, type = "b_ssd" }, # Job data volume
-      ]
+      # Note: Additional block volumes require scaleway_block_volume resource
 
       cloud_init = <<-EOF
         #cloud-config
@@ -264,6 +259,8 @@ module "compute" {
       EOF
 
       create_public_ip = false
+
+      private_network_id = scaleway_vpc_private_network.this.id
     }
   }
 
