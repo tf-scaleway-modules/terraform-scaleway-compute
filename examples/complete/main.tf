@@ -6,7 +6,7 @@
 # - Multiple instance groups with different configurations
 # - All instance-level options (volumes, cloud-init, user_data, state, etc.)
 # - SSH key management
-# - Security group with inbound/outbound rules
+# - Per-group security groups with custom inbound/outbound rules
 # - Placement group for high availability
 # - Multiple private networks
 # - SBS block storage (internal volumes)
@@ -244,6 +244,14 @@ module "compute" {
       private_networks = [
         { id = scaleway_vpc_private_network.data.id },
       ]
+
+      # Per-group security group configuration (overrides global defaults)
+      # Cache servers only need Redis port from private network
+      inbound_rules = [
+        { protocol = "TCP", port = 6379, ip_range = "10.0.0.0/8" }, # Redis
+        { protocol = "TCP", port = 22, ip_range = "11.0.0.0/8" },   # SSH
+        { protocol = "ICMP", ip_range = "10.0.0.0/8" },             # Ping
+      ]
     }
 
     # --------------------------------------------------------------------------
@@ -353,6 +361,15 @@ module "compute" {
       private_networks = [
         { id = scaleway_vpc_private_network.data.id },
       ]
+
+      # Per-group security group for NFS storage
+      inbound_rules = [
+        { protocol = "TCP", port = 2049, ip_range = "10.0.0.0/8" }, # NFS
+        { protocol = "UDP", port = 2049, ip_range = "10.0.0.0/8" }, # NFS UDP
+        { protocol = "TCP", port = 111, ip_range = "10.0.0.0/8" },  # RPC
+        { protocol = "UDP", port = 111, ip_range = "10.0.0.0/8" },  # RPC UDP
+        { protocol = "TCP", port = 22, ip_range = "11.0.0.0/8" },   # SSH
+      ]
     }
   }
 
@@ -369,15 +386,31 @@ module "compute" {
   # ============================================================================
   # Security Group Configuration
   # ============================================================================
+  #
+  # Two-tier security group architecture:
+  #
+  # 1. SHARED SECURITY GROUP (default-shared-sg):
+  #    - Contains the global inbound_rules/outbound_rules defined below
+  #    - Applies to ALL instances that don't have custom rules
+  #
+  # 2. PER-GROUP SECURITY GROUPS (default-{group}-sg):
+  #    - Created only when a group specifies custom inbound_rules or outbound_rules
+  #    - Contains MERGED rules: global rules + group-specific rules
+  #    - See 'cache' and 'storage' groups above for examples
+  #
+  # In this example:
+  #   - cache group → gets 'default-cache-sg' with global + Redis rules
+  #   - storage group → gets 'default-storage-sg' with global + NFS rules
+  #   - other groups (backend, frontend, etc.) → use 'default-shared-sg'
 
-  create_security_group = true
+  create_security_group = true # Enable security group creation
 
   # Default policies
   inbound_default_policy  = "drop"   # Deny all inbound by default
   outbound_default_policy = "accept" # Allow all outbound by default
   stateful                = true     # Track connection state
 
-  # Inbound rules
+  # Global inbound rules (apply to shared SG + merged into per-group SGs)
   inbound_rules = [
     # SSH access from private network only
     {

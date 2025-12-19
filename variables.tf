@@ -54,7 +54,26 @@ variable "instances" {
       id         = string           # Private network ID
       ip_address = optional(string) # Optional static IP in the private network
     })), [])
-    security_group_id      = optional(string)
+    # Security group configuration (per instance group)
+    security_group_id       = optional(string) # Use existing security group ID (skips creation)
+    create_security_group   = optional(bool)   # Create a security group for this group (default: use global setting)
+    inbound_default_policy  = optional(string) # Default inbound policy: accept or drop
+    outbound_default_policy = optional(string) # Default outbound policy: accept or drop
+    stateful                = optional(bool)   # Enable stateful security group
+    inbound_rules = optional(list(object({
+      action     = optional(string, "accept")
+      protocol   = optional(string, "TCP")
+      port       = optional(number)
+      port_range = optional(string)
+      ip_range   = optional(string, "0.0.0.0/0")
+    })))
+    outbound_rules = optional(list(object({
+      action     = optional(string, "accept")
+      protocol   = optional(string, "TCP")
+      port       = optional(number)
+      port_range = optional(string)
+      ip_range   = optional(string, "0.0.0.0/0")
+    })))
     placement_group_id     = optional(string)
     enable_backup_snapshot = optional(bool, false)
     additional_volumes = optional(list(object({

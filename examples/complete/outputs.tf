@@ -18,9 +18,19 @@ output "private_ips" {
   value       = module.compute.private_ips
 }
 
-output "security_group_id" {
-  description = "Security group ID"
-  value       = module.compute.security_group_id
+output "shared_security_group_id" {
+  description = "Shared security group ID (applies to all instances without custom rules)"
+  value       = module.compute.shared_security_group_id
+}
+
+output "group_security_group_ids" {
+  description = "Security group IDs for groups with custom rules"
+  value       = module.compute.group_security_group_ids
+}
+
+output "security_groups" {
+  description = "All security groups (shared + per-group)"
+  value       = module.compute.security_groups
 }
 
 output "placement_group_id" {

@@ -65,9 +65,22 @@ output "private_ips" {
 # Security Group Outputs
 # ==============================================================================
 
-output "security_group_id" {
-  description = "ID of the shared security group."
-  value       = try(scaleway_instance_security_group.this[0].id, var.security_group_id)
+output "shared_security_group_id" {
+  description = "ID of the shared security group (applies to all instances without custom rules)."
+  value       = try(scaleway_instance_security_group.shared[0].id, var.security_group_id)
+}
+
+output "group_security_group_ids" {
+  description = "Map of instance group names to their dedicated security group IDs (only groups with custom rules)."
+  value       = { for k, v in scaleway_instance_security_group.group : k => v.id }
+}
+
+output "security_groups" {
+  description = "All security groups (shared + per-group) with full details."
+  value = merge(
+    try({ shared = { id = scaleway_instance_security_group.shared[0].id, name = scaleway_instance_security_group.shared[0].name } }, {}),
+    { for k, v in scaleway_instance_security_group.group : k => { id = v.id, name = v.name } }
+  )
 }
 
 # ==============================================================================
