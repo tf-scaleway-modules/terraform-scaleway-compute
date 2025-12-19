@@ -30,8 +30,8 @@ output "instances" {
       type       = v.type
       state      = v.state
       zone       = v.zone
-      public_ip  = v.public_ip
-      private_ip = v.private_ip
+      public_ip  = try(v.public_ips[0].address, null)
+      private_ip = try(v.private_ips[0], null)
     }
   }
 }
@@ -44,8 +44,8 @@ output "instances_by_group" {
       for k, v in scaleway_instance_server.this : k => {
         id         = v.id
         name       = v.name
-        public_ip  = v.public_ip
-        private_ip = v.private_ip
+        public_ip  = try(v.public_ips[0].address, null)
+        private_ip = try(v.private_ips[0], null)
       } if local.instances_flat[k].group_name == group_name
     }
   }
@@ -53,12 +53,12 @@ output "instances_by_group" {
 
 output "public_ips" {
   description = "Map of instance keys to public IPs."
-  value       = { for k, v in scaleway_instance_server.this : k => v.public_ip }
+  value       = { for k, v in scaleway_instance_server.this : k => try(v.public_ips[0].address, null) }
 }
 
 output "private_ips" {
   description = "Map of instance keys to private IPs."
-  value       = { for k, v in scaleway_instance_server.this : k => v.private_ip }
+  value       = { for k, v in scaleway_instance_server.this : k => try(v.private_ips[0], null) }
 }
 
 # ==============================================================================
