@@ -5,7 +5,7 @@
 resource "scaleway_iam_ssh_key" "this" {
   count = var.create_ssh_key ? 1 : 0
 
-  name       = "${var.project_name}-ssh-key"
+  name       = "${var.name}-ssh-key"
   public_key = local.ssh_public_key_content
   project_id = local.project_id
 }
@@ -30,8 +30,8 @@ resource "scaleway_instance_ip" "this" {
 resource "scaleway_instance_security_group" "shared" {
   count = var.create_security_group ? 1 : 0
 
-  name                    = "${var.project_name}-shared-sg"
-  description             = "Shared security group for ${var.project_name}"
+  name                    = "${var.name}-shared-sg"
+  description             = "Shared security group for ${var.name}"
   project_id              = local.project_id
   zone                    = var.zone
   inbound_default_policy  = var.inbound_default_policy
@@ -78,7 +78,7 @@ resource "scaleway_instance_security_group" "group" {
   for_each = local.security_groups_to_create
 
   name                    = each.value.name
-  description             = "Security group for ${var.project_name} - ${each.key}"
+  description             = "Security group for ${var.name} - ${each.key}"
   project_id              = local.project_id
   zone                    = var.zone
   inbound_default_policy  = each.value.inbound_default_policy
@@ -126,7 +126,7 @@ resource "scaleway_instance_security_group_rules" "group" {
 resource "scaleway_instance_placement_group" "this" {
   count = var.create_placement_group ? 1 : 0
 
-  name        = "${var.project_name}-pg"
+  name        = "${var.name}-pg"
   project_id  = local.project_id
   zone        = var.zone
   policy_type = var.placement_group_policy_type

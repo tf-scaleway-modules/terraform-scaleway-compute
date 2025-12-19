@@ -8,13 +8,18 @@ variable "organization_id" {
 }
 
 variable "project_name" {
-  description = "Project name for resource naming and tagging."
+  description = "Scaleway Project name where all resources will be created."
   type        = string
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{0,61}[a-z0-9]$", var.project_name))
     error_message = "Project name must be lowercase alphanumeric with hyphens, start with a letter, and be 2-63 characters."
   }
+}
+
+variable "name" {
+  description = "Name for resource naming and tagging."
+  type        = string
 }
 
 # ==============================================================================

@@ -13,8 +13,13 @@ output "project_id" {
 }
 
 output "project_name" {
-  description = "Project name."
+  description = "Project name where all resources will be created at scaleway"
   value       = var.project_name
+}
+
+output "name" {
+  description = "name"
+  value       = var.name
 }
 
 # ==============================================================================

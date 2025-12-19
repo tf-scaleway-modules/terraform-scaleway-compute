@@ -7,7 +7,7 @@ locals {
   project_id = data.scaleway_account_project.project.id
 
   # Default tags
-  default_tags = ["terraform", "managed", "project:${var.project_name}"]
+  default_tags = ["terraform", "managed", "project:${var.name}"]
   global_tags  = distinct(concat(local.default_tags, var.tags))
 
   # SSH key resolution
@@ -28,7 +28,7 @@ locals {
   # These groups get MERGED rules: global rules + group-specific rules
   security_groups_to_create = {
     for group_name, group in var.instances : group_name => {
-      name                    = "${var.project_name}-${group_name}-sg"
+      name                    = "${var.name}-${group_name}-sg"
       inbound_default_policy  = coalesce(group.inbound_default_policy, var.inbound_default_policy)
       outbound_default_policy = coalesce(group.outbound_default_policy, var.outbound_default_policy)
       stateful                = coalesce(group.stateful, var.stateful)
@@ -49,7 +49,7 @@ locals {
       "${group_name}-${format("%02d", idx)}" => {
         group_name       = group_name
         index            = idx
-        name             = "${var.project_name}-${group_name}-${format("%02d", idx)}"
+        name             = "${var.name}-${group_name}-${format("%02d", idx)}"
         instance_type    = group.instance_type
         image            = group.image
         root_volume_size = group.root_volume_size_gb

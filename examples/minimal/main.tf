@@ -6,7 +6,9 @@ module "compute" {
   source = "../../"
 
   organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  project_name    = "myproject"
+  project_name    = "default"
+
+  name = "minimal-example"
 
   instances = {
     web = {

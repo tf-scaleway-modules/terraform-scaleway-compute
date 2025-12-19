@@ -67,6 +67,8 @@ module "compute" {
   project_name    = "default"
   zone            = "fr-par-1"
 
+  name = "complete-example"
+
   # Global tags applied to ALL resources
   tags = ["production", "ecommerce", "team:platform"]
 
@@ -75,7 +77,7 @@ module "compute" {
   # ============================================================================
   #
   # Each group can have completely different configurations.
-  # Instances are named: {project_name}-{group_name}-{index}
+  # Instances are named: {name}-{group_name}-{index}
   # Example: ecommerce-platform-backend-00, ecommerce-platform-backend-01, etc.
 
   instances = {
