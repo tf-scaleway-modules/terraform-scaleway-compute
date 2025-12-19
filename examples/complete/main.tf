@@ -8,7 +8,9 @@
 # - SSH key management
 # - Security group with inbound/outbound rules
 # - Placement group for high availability
-# - Private network integration
+# - Multiple private networks
+# - SBS block storage (internal volumes)
+# - External volume attachment
 # - Backup snapshots
 #
 # ==============================================================================
@@ -31,6 +33,23 @@ resource "scaleway_vpc_private_network" "data" {
   project_id = "d9191cb0-d164-47ec-8d04-2b1dd8dad3eb"
   region     = "fr-par"
   tags       = ["terraform", "managed", "complete-example", "data"]
+}
+
+# ==============================================================================
+# External Block Volumes (created outside the module)
+# ==============================================================================
+
+# External volumes for worker instances (one per instance since block volumes
+# can only be attached to ONE instance at a time - they cannot be shared)
+resource "scaleway_block_volume" "worker_external" {
+  count = 4 # One per worker instance
+
+  name       = "complete-example-worker-external-${format("%02d", count.index)}"
+  project_id = "d9191cb0-d164-47ec-8d04-2b1dd8dad3eb"
+  zone       = "fr-par-1"
+  iops       = 5000
+  size_in_gb = 50
+  tags       = ["terraform", "managed", "complete-example", "external", "worker"]
 }
 
 # ==============================================================================
@@ -65,7 +84,7 @@ module "compute" {
     # Backend API Servers (3 instances)
     # --------------------------------------------------------------------------
     backend = {
-      count         = 3
+      count         = 0
       instance_type = "GP1-S"
       image         = "ubuntu_noble"
 
@@ -109,7 +128,7 @@ module "compute" {
     # Frontend Web Servers (4 instances)
     # --------------------------------------------------------------------------
     frontend = {
-      count         = 2
+      count         = 0
       instance_type = "DEV1-M"
       image         = "ubuntu_noble"
 
@@ -147,7 +166,7 @@ module "compute" {
     # Database Server (1 instance with additional volumes and backup)
     # --------------------------------------------------------------------------
     database = {
-      count         = 3
+      count         = 0
       instance_type = "GP1-M"
       image         = "ubuntu_noble"
 
@@ -231,7 +250,7 @@ module "compute" {
     # Bastion/Jump Host (1 instance)
     # --------------------------------------------------------------------------
     bastion = {
-      count         = 2
+      count         = 0
       instance_type = "DEV1-S"
       image         = "ubuntu_noble"
 
@@ -260,10 +279,10 @@ module "compute" {
     }
 
     # --------------------------------------------------------------------------
-    # Worker/Job Servers (2 instances - can be stopped when not needed)
+    # Worker/Job Servers (4 instances - can be stopped when not needed)
     # --------------------------------------------------------------------------
     worker = {
-      count         = 4
+      count         = 0
       instance_type = "DEV1-M"
       image         = "ubuntu_noble"
 
@@ -275,7 +294,7 @@ module "compute" {
 
       tags = ["worker", "jobs", "tier:processing"]
 
-      # Additional SBS block volume for job data
+      # Additional SBS block volume for job data (created internally)
       additional_volumes = [
         { size_gb = 100, type = "sbs_5k" }, # Job data volume
       ]
@@ -294,6 +313,43 @@ module "compute" {
       create_public_ip = false
 
       # Workers connect to data network for job processing
+      private_networks = [
+        { id = scaleway_vpc_private_network.data.id },
+      ]
+    }
+
+    # --------------------------------------------------------------------------
+    # Storage Server (demonstrates external volume attachment)
+    # --------------------------------------------------------------------------
+    # Note: Block volumes can only be attached to ONE instance at a time.
+    # Use external_volume_ids for volumes created outside the module
+    # (e.g., from snapshots, or managed by another Terraform configuration)
+    storage = {
+      count         = 1
+      instance_type = "DEV1-S"
+      image         = "ubuntu_noble"
+
+      root_volume_size_gb = 20
+      root_volume_type    = "l_ssd"
+      state               = "started"
+
+      tags = ["storage", "nfs", "tier:storage"]
+
+      # External volume attachment (created outside the module)
+      # This demonstrates attaching volumes created elsewhere
+      external_volume_ids = [scaleway_block_volume.worker_external[0].id]
+
+      cloud_init = <<-EOF
+        #cloud-config
+        package_update: true
+        packages:
+          - nfs-kernel-server
+        runcmd:
+          - systemctl enable nfs-server
+      EOF
+
+      create_public_ip = false
+
       private_networks = [
         { id = scaleway_vpc_private_network.data.id },
       ]

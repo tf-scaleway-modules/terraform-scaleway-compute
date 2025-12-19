@@ -142,18 +142,22 @@ resource "scaleway_instance_server" "this" {
     delete_on_termination = true
   }
 
-  # Additional volumes (both local l_ssd and SBS block volumes)
+  # Additional volumes (internal l_ssd, internal SBS, and external volumes)
   additional_volume_ids = concat(
+    # Internal local volumes (l_ssd)
     [
       for vol_key, vol in local.local_volumes :
       scaleway_instance_volume.this[vol_key].id
       if vol.instance_key == each.key
     ],
+    # Internal SBS block volumes
     [
       for vol_key, vol in local.sbs_volumes :
       scaleway_block_volume.this[vol_key].id
       if vol.instance_key == each.key
-    ]
+    ],
+    # External volumes (created outside the module)
+    each.value.external_volume_ids
   )
 
   # Private networks (supports multiple)

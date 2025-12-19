@@ -62,6 +62,10 @@ variable "instances" {
       type    = optional(string, "sbs_5k") # sbs_5k, sbs_15k (IOPS tiers), or l_ssd (local)
       iops    = optional(number)           # Custom IOPS (only for SBS volumes)
     })), [])
+    # IDs of externally created volumes to attach.
+    # IMPORTANT: Only works when count <= 1. Block volumes can only be attached
+    # to ONE instance at a time - they cannot be shared across multiple instances.
+    external_volume_ids = optional(list(string), [])
   }))
 
   validation {

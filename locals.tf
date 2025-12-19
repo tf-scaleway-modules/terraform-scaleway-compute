@@ -43,11 +43,12 @@ locals {
         user_data        = group.user_data
         create_public_ip = group.create_public_ip
         # Private networks (instance-specific or default)
-        private_networks   = length(group.private_networks) > 0 ? group.private_networks : local.default_private_networks
-        security_group_id  = coalesce(group.security_group_id, local.security_group_id)
-        placement_group_id = coalesce(group.placement_group_id, local.placement_group_id)
-        enable_backup      = group.enable_backup_snapshot
-        additional_volumes = group.additional_volumes
+        private_networks    = length(group.private_networks) > 0 ? group.private_networks : local.default_private_networks
+        security_group_id   = coalesce(group.security_group_id, local.security_group_id)
+        placement_group_id  = coalesce(group.placement_group_id, local.placement_group_id)
+        enable_backup       = group.enable_backup_snapshot
+        additional_volumes  = group.additional_volumes
+        external_volume_ids = group.external_volume_ids
       }
     }
   ]...)
