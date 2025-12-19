@@ -13,6 +13,21 @@
 #
 # ==============================================================================
 
+# ==============================================================================
+# VPC Private Network
+# ==============================================================================
+
+resource "scaleway_vpc_private_network" "this" {
+  name       = "complete-example-vpc"
+  project_id = "f3d8393e-008a-4fb2-a4ff-81b6fe5c01b0"
+  region     = "fr-par"
+  tags       = ["terraform", "managed", "complete-example"]
+}
+
+# ==============================================================================
+# Compute Module
+# ==============================================================================
+
 module "compute" {
   source = "../../"
 
@@ -21,7 +36,7 @@ module "compute" {
   # ============================================================================
 
   organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  project_name    = "ecommerce-platform"
+  project_name    = "default"
   zone            = "fr-par-1"
 
   # Global tags applied to ALL resources
@@ -85,7 +100,7 @@ module "compute" {
     # Frontend Web Servers (4 instances)
     # --------------------------------------------------------------------------
     frontend = {
-      count         = 4
+      count         = 0
       instance_type = "DEV1-M"
       image         = "ubuntu_noble"
 
@@ -123,7 +138,7 @@ module "compute" {
     # Database Server (1 instance with additional volumes and backup)
     # --------------------------------------------------------------------------
     database = {
-      count         = 1
+      count         = 0
       instance_type = "GP1-M"
       image         = "ubuntu_noble"
 
@@ -161,7 +176,7 @@ module "compute" {
     # Cache Servers (2 instances)
     # --------------------------------------------------------------------------
     cache = {
-      count         = 2
+      count         = 0
       instance_type = "DEV1-S"
       image         = "ubuntu_noble"
 
@@ -189,7 +204,7 @@ module "compute" {
     # Bastion/Jump Host (1 instance)
     # --------------------------------------------------------------------------
     bastion = {
-      count         = 1
+      count         = 0
       instance_type = "DEV1-S"
       image         = "ubuntu_noble"
 
@@ -221,7 +236,7 @@ module "compute" {
     # Worker/Job Servers (2 instances - can be stopped when not needed)
     # --------------------------------------------------------------------------
     worker = {
-      count         = 2
+      count         = 0
       instance_type = "DEV1-M"
       image         = "ubuntu_noble"
 
@@ -383,8 +398,8 @@ module "compute" {
   # Network Configuration
   # ============================================================================
 
-  # Default private network for all instances (created externally)
-  # private_network_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  # Default private network for all instances
+  private_network_id = scaleway_vpc_private_network.this.id
 
   # Public IP type: routed_ipv4, routed_ipv6, or nat
   public_ip_type = "routed_ipv4"
