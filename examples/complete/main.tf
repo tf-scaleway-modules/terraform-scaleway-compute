@@ -14,14 +14,23 @@
 # ==============================================================================
 
 # ==============================================================================
-# VPC Private Network
+# VPC Private Networks
 # ==============================================================================
 
-resource "scaleway_vpc_private_network" "this" {
-  name       = "complete-example-vpc"
+# Main application network
+resource "scaleway_vpc_private_network" "main" {
+  name       = "complete-example-main"
   project_id = "d9191cb0-d164-47ec-8d04-2b1dd8dad3eb"
   region     = "fr-par"
-  tags       = ["terraform", "managed", "complete-example"]
+  tags       = ["terraform", "managed", "complete-example", "main"]
+}
+
+# Database/storage network (isolated)
+resource "scaleway_vpc_private_network" "data" {
+  name       = "complete-example-data"
+  project_id = "d9191cb0-d164-47ec-8d04-2b1dd8dad3eb"
+  region     = "fr-par"
+  tags       = ["terraform", "managed", "complete-example", "data"]
 }
 
 # ==============================================================================
@@ -35,7 +44,7 @@ module "compute" {
   # Organization & Project (Required)
   # ============================================================================
 
-  organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  organization_id = "f3d8393e-008a-4fb2-a4ff-81b6fe5c01b0"
   project_name    = "default"
   zone            = "fr-par-1"
 
@@ -148,8 +157,18 @@ module "compute" {
 
       tags = ["database", "postgres", "tier:data"]
 
-      # Note: Additional block volumes require scaleway_block_volume resource
-      # The legacy b_ssd type is no longer supported by Scaleway
+      # Additional SBS block volumes for data storage
+      additional_volumes = [
+        { size_gb = 200, type = "sbs_5k" },  # Data volume (5000 IOPS)
+        { size_gb = 100, type = "sbs_15k" }, # WAL/logs volume (15000 IOPS)
+      ]
+
+      # Database instances connect to BOTH networks (main + data)
+      # This demonstrates multiple private network attachment
+      private_networks = [
+        { id = scaleway_vpc_private_network.main.id },
+        { id = scaleway_vpc_private_network.data.id },
+      ]
 
       # Enable backup snapshots for data protection
       enable_backup_snapshot = true
@@ -183,6 +202,12 @@ module "compute" {
 
       tags = ["cache", "redis", "tier:caching"]
 
+      # Additional SBS block volumes for data storage
+      additional_volumes = [
+        { size_gb = 20, type = "sbs_5k" },  # Data volume (5000 IOPS)
+        { size_gb = 10, type = "sbs_15k" }, # WAL/logs volume (15000 IOPS)
+      ]
+
       cloud_init = <<-EOF
         #cloud-config
         package_update: true
@@ -195,6 +220,11 @@ module "compute" {
 
       # Cache servers are internal only
       create_public_ip = false
+
+      # Cache connects to data network alongside databases
+      private_networks = [
+        { id = scaleway_vpc_private_network.data.id },
+      ]
     }
 
     # --------------------------------------------------------------------------
@@ -245,7 +275,10 @@ module "compute" {
 
       tags = ["worker", "jobs", "tier:processing"]
 
-      # Note: Additional block volumes require scaleway_block_volume resource
+      # Additional SBS block volume for job data
+      additional_volumes = [
+        { size_gb = 100, type = "sbs_5k" }, # Job data volume
+      ]
 
       cloud_init = <<-EOF
         #cloud-config
@@ -260,7 +293,10 @@ module "compute" {
 
       create_public_ip = false
 
-      private_network_id = scaleway_vpc_private_network.this.id
+      # Workers connect to data network for job processing
+      private_networks = [
+        { id = scaleway_vpc_private_network.data.id },
+      ]
     }
   }
 
@@ -395,8 +431,10 @@ module "compute" {
   # Network Configuration
   # ============================================================================
 
-  # Default private network for all instances
-  private_network_id = scaleway_vpc_private_network.this.id
+  # Default private networks for all instances (supports multiple)
+  private_networks = [
+    { id = scaleway_vpc_private_network.main.id },
+  ]
 
   # Public IP type: routed_ipv4, routed_ipv6, or nat
   public_ip_type = "routed_ipv4"

@@ -40,23 +40,27 @@ variable "tags" {
 variable "instances" {
   description = "Map of instance groups to create. Each group can have different count, type, image, etc."
   type = map(object({
-    count                  = number
-    instance_type          = string
-    image                  = optional(string, "ubuntu_noble")
-    root_volume_size_gb    = optional(number, 20)
-    root_volume_type       = optional(string, "l_ssd")
-    state                  = optional(string, "started")
-    tags                   = optional(list(string), [])
-    cloud_init             = optional(string)
-    user_data              = optional(map(string), {})
-    create_public_ip       = optional(bool, true)
-    private_network_id     = optional(string)
+    count               = number
+    instance_type       = string
+    image               = optional(string, "ubuntu_noble")
+    root_volume_size_gb = optional(number, 20)
+    root_volume_type    = optional(string, "l_ssd")
+    state               = optional(string, "started")
+    tags                = optional(list(string), [])
+    cloud_init          = optional(string)
+    user_data           = optional(map(string), {})
+    create_public_ip    = optional(bool, true)
+    private_networks = optional(list(object({
+      id         = string           # Private network ID
+      ip_address = optional(string) # Optional static IP in the private network
+    })), [])
     security_group_id      = optional(string)
     placement_group_id     = optional(string)
     enable_backup_snapshot = optional(bool, false)
     additional_volumes = optional(list(object({
       size_gb = number
-      type    = optional(string, "b_ssd")
+      type    = optional(string, "sbs_5k") # sbs_5k, sbs_15k (IOPS tiers), or l_ssd (local)
+      iops    = optional(number)           # Custom IOPS (only for SBS volumes)
     })), [])
   }))
 
@@ -183,10 +187,13 @@ variable "placement_group_policy_mode" {
 # Network Configuration (Shared)
 # ==============================================================================
 
-variable "private_network_id" {
-  description = "Default private network ID for all instances."
-  type        = string
-  default     = null
+variable "private_networks" {
+  description = "Default private networks for all instances. Each network can have an optional static IP."
+  type = list(object({
+    id         = string           # Private network ID
+    ip_address = optional(string) # Optional static IP in the private network
+  }))
+  default = []
 }
 
 variable "public_ip_type" {

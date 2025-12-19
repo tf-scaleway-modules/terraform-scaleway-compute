@@ -85,11 +85,26 @@ resource "scaleway_instance_placement_group" "this" {
 }
 
 # ==============================================================================
-# Additional Block Volumes
+# Additional Block Volumes - SBS (Scaleway Block Storage)
+# ==============================================================================
+
+resource "scaleway_block_volume" "this" {
+  for_each = local.sbs_volumes
+
+  name       = each.value.name
+  project_id = local.project_id
+  zone       = var.zone
+  iops       = each.value.iops != null ? each.value.iops : (each.value.type == "sbs_15k" ? 15000 : 5000)
+  size_in_gb = each.value.size_gb
+  tags       = local.global_tags
+}
+
+# ==============================================================================
+# Additional Block Volumes - Local (l_ssd)
 # ==============================================================================
 
 resource "scaleway_instance_volume" "this" {
-  for_each = local.volumes_flat
+  for_each = local.local_volumes
 
   name       = each.value.name
   project_id = local.project_id
@@ -127,18 +142,27 @@ resource "scaleway_instance_server" "this" {
     delete_on_termination = true
   }
 
-  # Additional volumes
-  additional_volume_ids = [
-    for vol_key, vol in local.volumes_flat :
-    scaleway_instance_volume.this[vol_key].id
-    if vol.instance_key == each.key
-  ]
+  # Additional volumes (both local l_ssd and SBS block volumes)
+  additional_volume_ids = concat(
+    [
+      for vol_key, vol in local.local_volumes :
+      scaleway_instance_volume.this[vol_key].id
+      if vol.instance_key == each.key
+    ],
+    [
+      for vol_key, vol in local.sbs_volumes :
+      scaleway_block_volume.this[vol_key].id
+      if vol.instance_key == each.key
+    ]
+  )
 
-  # Private network
+  # Private networks (supports multiple)
   dynamic "private_network" {
-    for_each = each.value.private_network_id != null ? [1] : []
+    for_each = each.value.private_networks
     content {
-      pn_id = each.value.private_network_id
+      pn_id = private_network.value.id
+      # Only set ip_address if explicitly provided (static IP)
+      # Omit for DHCP assignment
     }
   }
 
@@ -156,6 +180,7 @@ resource "scaleway_instance_server" "this" {
     scaleway_instance_security_group_rules.this,
     scaleway_instance_placement_group.this,
     scaleway_instance_volume.this,
+    scaleway_block_volume.this,
   ]
 }
 

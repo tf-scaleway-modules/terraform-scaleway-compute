@@ -93,6 +93,11 @@ output "ssh_key_id" {
 # ==============================================================================
 
 output "volumes" {
-  description = "Map of additional volumes."
-  value       = { for k, v in scaleway_instance_volume.this : k => { id = v.id, name = v.name } }
+  description = "Map of additional volumes (local l_ssd volumes)."
+  value       = { for k, v in scaleway_instance_volume.this : k => { id = v.id, name = v.name, type = "local" } }
+}
+
+output "block_volumes" {
+  description = "Map of SBS block volumes."
+  value       = { for k, v in scaleway_block_volume.this : k => { id = v.id, name = v.name, type = "sbs" } }
 }
