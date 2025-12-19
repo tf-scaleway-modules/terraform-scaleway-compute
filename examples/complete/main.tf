@@ -63,8 +63,8 @@ module "compute" {
   # Organization & Project (Required)
   # ============================================================================
 
-  organization_id = "f3d8393e-008a-4fb2-a4ff-81b6fe5c01b0"
-  project_name    = "default"
+  organization_id = "00000000-0000-0000-0000-000000000000"
+  project_name    = "00000000-0000-0000-0000-000000000000"
   zone            = "fr-par-1"
 
   name = "complete-example"
@@ -86,7 +86,7 @@ module "compute" {
     # Backend API Servers (3 instances)
     # --------------------------------------------------------------------------
     backend = {
-      count         = 0
+      count         = 2
       instance_type = "GP1-S"
       image         = "ubuntu_noble"
 
@@ -130,7 +130,7 @@ module "compute" {
     # Frontend Web Servers (4 instances)
     # --------------------------------------------------------------------------
     frontend = {
-      count         = 0
+      count         = 2
       instance_type = "DEV1-M"
       image         = "ubuntu_noble"
 
@@ -168,7 +168,7 @@ module "compute" {
     # Database Server (1 instance with additional volumes and backup)
     # --------------------------------------------------------------------------
     database = {
-      count         = 0
+      count         = 3
       instance_type = "GP1-M"
       image         = "ubuntu_noble"
 
@@ -260,7 +260,7 @@ module "compute" {
     # Bastion/Jump Host (1 instance)
     # --------------------------------------------------------------------------
     bastion = {
-      count         = 0
+      count         = 2
       instance_type = "DEV1-S"
       image         = "ubuntu_noble"
 
@@ -292,7 +292,7 @@ module "compute" {
     # Worker/Job Servers (4 instances - can be stopped when not needed)
     # --------------------------------------------------------------------------
     worker = {
-      count         = 0
+      count         = 2
       instance_type = "DEV1-M"
       image         = "ubuntu_noble"
 

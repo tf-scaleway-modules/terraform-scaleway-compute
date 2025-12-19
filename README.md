@@ -10,7 +10,7 @@ A production-ready Terraform module for creating and managing **Scaleway** Compu
 ## Features
 
 - **Multi-Instance Groups**: Define multiple groups (backend, frontend, database) with different configurations
-- **Security Groups**: Shared security group with configurable inbound/outbound rules
+- **Two-Tier Security Groups**: Shared security group for all instances + per-group security groups with merged rules
 - **Multiple Private Networks**: Connect instances to multiple VPC private networks simultaneously
 - **SBS Block Storage**: Additional SBS volumes per instance with configurable IOPS (5k/15k)
 - **External Volume Attachment**: Attach externally created volumes to instances via IDs
@@ -35,6 +35,7 @@ module "compute" {
 
   organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
   project_name    = "myproject"
+  name            = "myapp"  # Used for resource naming: myapp-web-00, myapp-shared-sg, etc.
 
   instances = {
     web = {
@@ -43,6 +44,7 @@ module "compute" {
     }
   }
 
+  # Global inbound rules (apply to shared security group)
   inbound_rules = [
     { protocol = "TCP", port = 22 }
   ]
@@ -66,6 +68,7 @@ module "compute" {
 
   organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
   project_name    = "ecommerce"
+  name            = "ecommerce-prod"
   zone            = "fr-par-1"
 
   tags = ["production"]
@@ -102,15 +105,24 @@ module "compute" {
       count                  = 1
       instance_type          = "GP1-M"
       enable_backup_snapshot = true
+      create_public_ip       = false
+
       # SBS volumes with configurable IOPS
       additional_volumes = [
         { size_gb = 200, type = "sbs_5k" },   # 5000 IOPS
         { size_gb = 100, type = "sbs_15k" },  # 15000 IOPS
       ]
+
       # Database connects to both networks
       private_networks = [
         { id = scaleway_vpc_private_network.main.id },
         { id = scaleway_vpc_private_network.data.id },
+      ]
+
+      # Per-group security rules (MERGED with global rules)
+      # This group gets: SSH (global) + PostgreSQL (group-specific)
+      inbound_rules = [
+        { protocol = "TCP", port = 5432, ip_range = "10.0.0.0/8" },
       ]
     }
   }
@@ -119,12 +131,65 @@ module "compute" {
   create_placement_group      = true
   placement_group_policy_type = "max_availability"
 
-  # Security rules
+  # Global security rules (apply to shared SG + merged into per-group SGs)
   inbound_rules = [
     { protocol = "TCP", port = 22, ip_range = "10.0.0.0/8" },
     { protocol = "TCP", port = 443 },
   ]
 }
+```
+
+## Security Group Architecture
+
+This module uses a **two-tier security group architecture**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Security Group Architecture                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │           SHARED SECURITY GROUP (name-shared-sg)          │   │
+│  │                                                            │   │
+│  │  Contains: Global inbound_rules + outbound_rules           │   │
+│  │  Applied to: All instances WITHOUT custom rules            │   │
+│  │                                                            │   │
+│  │  Examples: backend, frontend groups                        │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │        PER-GROUP SECURITY GROUPS (name-{group}-sg)        │   │
+│  │                                                            │   │
+│  │  Contains: Global rules + Group-specific rules (MERGED)    │   │
+│  │  Created when: Group specifies custom inbound/outbound     │   │
+│  │                                                            │   │
+│  │  Example: database group with PostgreSQL rules             │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### How it works
+
+| Instance Group | Has Custom Rules? | Security Group Used | Rules Applied |
+|---------------|-------------------|---------------------|---------------|
+| `backend` | No | `name-shared-sg` | Global rules only |
+| `frontend` | No | `name-shared-sg` | Global rules only |
+| `database` | Yes | `name-database-sg` | Global + PostgreSQL rules |
+| `cache` | Yes | `name-cache-sg` | Global + Redis rules |
+
+### Outputs
+
+```hcl
+# Get the shared security group ID
+module.compute.shared_security_group_id
+
+# Get per-group security group IDs (only groups with custom rules)
+module.compute.group_security_group_ids["database"]
+module.compute.group_security_group_ids["cache"]
+
+# Get all security groups with details
+module.compute.security_groups
 ```
 
 <!-- BEGIN_TF_DOCS -->
@@ -216,6 +281,8 @@ No modules.
 - SSH access is restricted by default - consider limiting to specific IP ranges
 - Enable `stateful` security groups for automatic return traffic handling
 - Use private networks for inter-instance communication
+- Groups with custom rules get a dedicated security group with merged rules (global + group-specific)
+- Use `security_group_id` at group level to attach an external security group instead of creating one
 
 ## License
 
