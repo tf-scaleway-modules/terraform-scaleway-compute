@@ -204,7 +204,7 @@ module.compute.security_groups
 
 | Name | Version |
 |------|---------|
-| <a name="provider_scaleway"></a> [scaleway](#provider\_scaleway) | ~> 2.64 |
+| <a name="provider_scaleway"></a> [scaleway](#provider\_scaleway) | 2.68.0 |
 
 ## Modules
 
@@ -234,6 +234,7 @@ No modules.
 | <a name="input_create_placement_group"></a> [create\_placement\_group](#input\_create\_placement\_group) | Create a shared placement group. | `bool` | `false` | no |
 | <a name="input_create_security_group"></a> [create\_security\_group](#input\_create\_security\_group) | Create a shared security group for all instances. | `bool` | `true` | no |
 | <a name="input_create_ssh_key"></a> [create\_ssh\_key](#input\_create\_ssh\_key) | Create and upload an SSH key. | `bool` | `false` | no |
+| <a name="input_ignore_tags_changes"></a> [ignore\_tags\_changes](#input\_ignore\_tags\_changes) | Ignore changes to tags made outside of Terraform. Useful when external systems add tags.<br/>NOTE: Due to Terraform limitations, this variable is for documentation purposes only.<br/>To actually ignore tag changes, modify the module source or use a wrapper module with<br/>lifecycle { ignore\_changes = [tags] }. | `bool` | `false` | no |
 | <a name="input_inbound_default_policy"></a> [inbound\_default\_policy](#input\_inbound\_default\_policy) | Default inbound policy: accept or drop. | `string` | `"drop"` | no |
 | <a name="input_inbound_rules"></a> [inbound\_rules](#input\_inbound\_rules) | Inbound security group rules. | <pre>list(object({<br/>    action     = optional(string, "accept")<br/>    protocol   = optional(string, "TCP")<br/>    port       = optional(number)<br/>    port_range = optional(string)<br/>    ip_range   = optional(string, "0.0.0.0/0")<br/>  }))</pre> | <pre>[<br/>  {<br/>    "ip_range": "0.0.0.0/0",<br/>    "port": 22,<br/>    "protocol": "TCP"<br/>  }<br/>]</pre> | no |
 | <a name="input_instances"></a> [instances](#input\_instances) | Map of instance groups to create. Each group can have different count, type, image, etc. | <pre>map(object({<br/>    count               = number<br/>    instance_type       = string<br/>    image               = optional(string, "ubuntu_noble")<br/>    root_volume_size_gb = optional(number, 20)<br/>    root_volume_type    = optional(string, "l_ssd")<br/>    state               = optional(string, "started")<br/>    tags                = optional(list(string), [])<br/>    cloud_init          = optional(string)<br/>    user_data           = optional(map(string), {})<br/>    create_public_ip    = optional(bool, true)<br/>    private_networks = optional(list(object({<br/>      id         = string           # Private network ID<br/>      ip_address = optional(string) # Optional static IP in the private network<br/>    })), [])<br/>    # Security group configuration (per instance group)<br/>    security_group_id       = optional(string) # Use existing security group ID (skips creation)<br/>    create_security_group   = optional(bool)   # Create a security group for this group (default: use global setting)<br/>    inbound_default_policy  = optional(string) # Default inbound policy: accept or drop<br/>    outbound_default_policy = optional(string) # Default outbound policy: accept or drop<br/>    stateful                = optional(bool)   # Enable stateful security group<br/>    inbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })))<br/>    outbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })))<br/>    placement_group_id     = optional(string)<br/>    enable_backup_snapshot = optional(bool, false)<br/>    additional_volumes = optional(list(object({<br/>      size_gb = number<br/>      type    = optional(string, "sbs_5k") # sbs_5k, sbs_15k (IOPS tiers), or l_ssd (local)<br/>      iops    = optional(number)           # Custom IOPS (only for SBS volumes)<br/>    })), [])<br/>    # IDs of externally created volumes to attach.<br/>    # IMPORTANT: Only works when count <= 1. Block volumes can only be attached<br/>    # to ONE instance at a time - they cannot be shared across multiple instances.<br/>    external_volume_ids = optional(list(string), [])<br/>  }))</pre> | n/a | yes |
@@ -252,6 +253,7 @@ No modules.
 | <a name="input_ssh_public_key_file"></a> [ssh\_public\_key\_file](#input\_ssh\_public\_key\_file) | Path to SSH public key file. | `string` | `null` | no |
 | <a name="input_stateful"></a> [stateful](#input\_stateful) | Enable stateful security group. | `bool` | `true` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Global tags applied to all resources. | `list(string)` | `[]` | no |
+| <a name="input_timeouts"></a> [timeouts](#input\_timeouts) | Resource operation timeouts for create, update, and delete operations. | <pre>object({<br/>    create = optional(string, "10m")<br/>    update = optional(string, "10m")<br/>    delete = optional(string, "10m")<br/>  })</pre> | `{}` | no |
 | <a name="input_zone"></a> [zone](#input\_zone) | Scaleway zone (e.g., fr-par-1, nl-ams-1). | `string` | `"fr-par-1"` | no |
 
 ## Outputs
@@ -283,6 +285,60 @@ No modules.
 - Use private networks for inter-instance communication
 - Groups with custom rules get a dedicated security group with merged rules (global + group-specific)
 - Use `security_group_id` at group level to attach an external security group instead of creating one
+
+## Resource Timeouts
+
+Configure operation timeouts using the `timeouts` variable:
+
+```hcl
+module "compute" {
+  source = "..."
+
+  timeouts = {
+    create = "20m"  # Instance creation (default: 10m)
+    update = "15m"  # Instance updates (default: 10m)
+    delete = "10m"  # Instance deletion (default: 10m)
+  }
+
+  # ... other configuration
+}
+```
+
+Timeouts apply to instances, block volumes, and security groups.
+
+## Lifecycle Protection
+
+To protect critical resources from accidental deletion, use Terraform's `prevent_destroy` in your root module:
+
+```hcl
+# In your root module, after the module call:
+resource "null_resource" "protect_database" {
+  # Reference the database instances to create a dependency
+  triggers = {
+    instance_ids = join(",", [
+      for k, v in module.compute.instances : v.id
+      if startswith(k, "database-")
+    ])
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+```
+
+Alternatively, for direct resource protection, fork the module and add:
+
+```hcl
+# In scaleway_instance_server.this resource:
+lifecycle {
+  prevent_destroy = true  # Add this line
+}
+```
+
+### Ignoring External Tag Changes
+
+Set `ignore_tags_changes = true` to prevent Terraform from detecting tag drift caused by external systems. Note: Due to Terraform limitations, this requires modifying the module source to add `ignore_changes = [tags]` to the lifecycle block.
 
 ## License
 

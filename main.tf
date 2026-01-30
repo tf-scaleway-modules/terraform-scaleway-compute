@@ -8,6 +8,13 @@ resource "scaleway_iam_ssh_key" "this" {
   name       = "${var.name}-ssh-key"
   public_key = local.ssh_public_key_content
   project_id = local.project_id
+
+  lifecycle {
+    precondition {
+      condition     = var.ssh_public_key != null || var.ssh_public_key_file != null
+      error_message = "SSH key creation requires either ssh_public_key or ssh_public_key_file to be provided."
+    }
+  }
 }
 
 # ==============================================================================
@@ -21,6 +28,10 @@ resource "scaleway_instance_ip" "this" {
   zone       = var.zone
   type       = var.public_ip_type
   tags       = each.value.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # ==============================================================================
@@ -39,6 +50,10 @@ resource "scaleway_instance_security_group" "shared" {
   stateful                = var.stateful
   external_rules          = true
   tags                    = local.global_tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "scaleway_instance_security_group_rules" "shared" {
@@ -86,6 +101,10 @@ resource "scaleway_instance_security_group" "group" {
   stateful                = each.value.stateful
   external_rules          = true
   tags                    = each.value.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "scaleway_instance_security_group_rules" "group" {
@@ -147,6 +166,11 @@ resource "scaleway_block_volume" "this" {
   iops       = each.value.iops != null ? each.value.iops : (each.value.type == "sbs_15k" ? 15000 : 5000)
   size_in_gb = each.value.size_gb
   tags       = local.global_tags
+
+  timeouts {
+    create = var.timeouts.create
+    delete = var.timeouts.delete
+  }
 }
 
 # ==============================================================================
@@ -243,6 +267,24 @@ resource "scaleway_instance_server" "this" {
     scaleway_instance_volume.this,
     scaleway_block_volume.this,
   ]
+
+  lifecycle {
+    # Note: To ignore tag changes, set ignore_tags_changes = true.
+    # Due to Terraform limitations, this requires the module source to be modified
+    # or use lifecycle { ignore_changes = [tags] } in a wrapper module.
+    # See README for the recommended pattern.
+
+    precondition {
+      condition     = length(each.value.external_volume_ids) == 0 || var.instances[each.value.group_name].count <= 1
+      error_message = "External volumes can only be used when instance group count is 1. Block volumes cannot be shared across multiple instances."
+    }
+  }
+
+  timeouts {
+    create = var.timeouts.create
+    update = var.timeouts.update
+    delete = var.timeouts.delete
+  }
 }
 
 # ==============================================================================

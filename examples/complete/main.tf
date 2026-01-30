@@ -64,7 +64,7 @@ module "compute" {
   # ============================================================================
 
   organization_id = "00000000-0000-0000-0000-000000000000"
-  project_name    = "00000000-0000-0000-0000-000000000000"
+  project_name    = "my-project"
   zone            = "fr-par-1"
 
   name = "complete-example"

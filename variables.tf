@@ -30,6 +30,11 @@ variable "zone" {
   description = "Scaleway zone (e.g., fr-par-1, nl-ams-1)."
   type        = string
   default     = "fr-par-1"
+
+  validation {
+    condition     = can(regex("^(fr-par|nl-ams|pl-waw)-[1-3]$", var.zone))
+    error_message = "Zone must be a valid Scaleway zone (e.g., fr-par-1, nl-ams-1, pl-waw-2)."
+  }
 }
 
 variable "tags" {
@@ -98,6 +103,45 @@ variable "instances" {
     ])
     error_message = "Instance count per group must be between 0 and 50."
   }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.instances : can(regex("^[A-Z]+[0-9]+-[A-Z0-9]+$", v.instance_type))
+    ])
+    error_message = "Instance type must be a valid Scaleway format (e.g., DEV1-S, GP1-M, PRO2-XXS)."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.instances : contains(["l_ssd", "b_ssd"], v.root_volume_type)
+    ])
+    error_message = "Root volume type must be 'l_ssd' or 'b_ssd'."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.instances : contains(["started", "stopped", "standby"], v.state)
+    ])
+    error_message = "Instance state must be 'started', 'stopped', or 'standby'."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.instances : alltrue([
+        for vol in v.additional_volumes : contains(["l_ssd", "sbs_5k", "sbs_15k"], vol.type)
+      ])
+    ])
+    error_message = "Additional volume type must be 'l_ssd', 'sbs_5k', or 'sbs_15k'."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.instances : !(
+        v.security_group_id != null && (v.inbound_rules != null || v.outbound_rules != null)
+      )
+    ])
+    error_message = "Cannot specify both security_group_id and custom inbound_rules/outbound_rules. Use one or the other."
+  }
 }
 
 # ==============================================================================
@@ -143,12 +187,22 @@ variable "inbound_default_policy" {
   description = "Default inbound policy: accept or drop."
   type        = string
   default     = "drop"
+
+  validation {
+    condition     = contains(["accept", "drop"], var.inbound_default_policy)
+    error_message = "Inbound default policy must be 'accept' or 'drop'."
+  }
 }
 
 variable "outbound_default_policy" {
   description = "Default outbound policy: accept or drop."
   type        = string
   default     = "accept"
+
+  validation {
+    condition     = contains(["accept", "drop"], var.outbound_default_policy)
+    error_message = "Outbound default policy must be 'accept' or 'drop'."
+  }
 }
 
 variable "stateful" {
@@ -169,6 +223,27 @@ variable "inbound_rules" {
   default = [
     { protocol = "TCP", port = 22, ip_range = "0.0.0.0/0" }
   ]
+
+  validation {
+    condition = alltrue([
+      for rule in var.inbound_rules : contains(["TCP", "UDP", "ICMP", "ANY"], rule.protocol)
+    ])
+    error_message = "Inbound rule protocol must be 'TCP', 'UDP', 'ICMP', or 'ANY'."
+  }
+
+  validation {
+    condition = alltrue([
+      for rule in var.inbound_rules : can(regex("^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$", rule.ip_range))
+    ])
+    error_message = "Inbound rule ip_range must be valid CIDR notation (e.g., '10.0.0.0/8', '0.0.0.0/0')."
+  }
+
+  validation {
+    condition = alltrue([
+      for rule in var.inbound_rules : !(rule.port != null && rule.port_range != null)
+    ])
+    error_message = "Inbound rule cannot specify both 'port' and 'port_range' - use one or the other."
+  }
 }
 
 variable "outbound_rules" {
@@ -181,6 +256,27 @@ variable "outbound_rules" {
     ip_range   = optional(string, "0.0.0.0/0")
   }))
   default = []
+
+  validation {
+    condition = alltrue([
+      for rule in var.outbound_rules : contains(["TCP", "UDP", "ICMP", "ANY"], rule.protocol)
+    ])
+    error_message = "Outbound rule protocol must be 'TCP', 'UDP', 'ICMP', or 'ANY'."
+  }
+
+  validation {
+    condition = alltrue([
+      for rule in var.outbound_rules : can(regex("^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$", rule.ip_range))
+    ])
+    error_message = "Outbound rule ip_range must be valid CIDR notation (e.g., '10.0.0.0/8', '0.0.0.0/0')."
+  }
+
+  validation {
+    condition = alltrue([
+      for rule in var.outbound_rules : !(rule.port != null && rule.port_range != null)
+    ])
+    error_message = "Outbound rule cannot specify both 'port' and 'port_range' - use one or the other."
+  }
 }
 
 # ==============================================================================
@@ -203,12 +299,22 @@ variable "placement_group_policy_type" {
   description = "Placement policy: low_latency or max_availability."
   type        = string
   default     = "max_availability"
+
+  validation {
+    condition     = contains(["low_latency", "max_availability"], var.placement_group_policy_type)
+    error_message = "Placement group policy type must be 'low_latency' or 'max_availability'."
+  }
 }
 
 variable "placement_group_policy_mode" {
   description = "Placement mode: optional or enforced."
   type        = string
   default     = "optional"
+
+  validation {
+    condition     = contains(["optional", "enforced"], var.placement_group_policy_mode)
+    error_message = "Placement group policy mode must be 'optional' or 'enforced'."
+  }
 }
 
 # ==============================================================================
@@ -228,4 +334,35 @@ variable "public_ip_type" {
   description = "Type of public IP: routed_ipv4, routed_ipv6, or nat."
   type        = string
   default     = "routed_ipv4"
+
+  validation {
+    condition     = contains(["routed_ipv4", "routed_ipv6", "nat"], var.public_ip_type)
+    error_message = "Public IP type must be 'routed_ipv4', 'routed_ipv6', or 'nat'."
+  }
+}
+
+# ==============================================================================
+# Lifecycle Configuration
+# ==============================================================================
+
+# tflint-ignore: terraform_unused_declarations
+variable "ignore_tags_changes" {
+  description = <<-EOT
+    Ignore changes to tags made outside of Terraform. Useful when external systems add tags.
+    NOTE: Due to Terraform limitations, this variable is for documentation purposes only.
+    To actually ignore tag changes, modify the module source or use a wrapper module with
+    lifecycle { ignore_changes = [tags] }.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "timeouts" {
+  description = "Resource operation timeouts for create, update, and delete operations."
+  type = object({
+    create = optional(string, "10m")
+    update = optional(string, "10m")
+    delete = optional(string, "10m")
+  })
+  default = {}
 }
