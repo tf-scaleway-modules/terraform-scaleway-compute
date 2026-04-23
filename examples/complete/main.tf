@@ -22,7 +22,7 @@
 # Main application network
 resource "scaleway_vpc_private_network" "main" {
   name       = "complete-example-main"
-  project_id = "d9191cb0-d164-47ec-8d04-2b1dd8dad3eb"
+  project_id = "11111110-d164-47ec-8d04-111111111111"
   region     = "fr-par"
   tags       = ["terraform", "managed", "complete-example", "main"]
 }
@@ -30,7 +30,7 @@ resource "scaleway_vpc_private_network" "main" {
 # Database/storage network (isolated)
 resource "scaleway_vpc_private_network" "data" {
   name       = "complete-example-data"
-  project_id = "d9191cb0-d164-47ec-8d04-2b1dd8dad3eb"
+  project_id = "11111110-d164-47ec-8d04-111111111111"
   region     = "fr-par"
   tags       = ["terraform", "managed", "complete-example", "data"]
 }
@@ -45,7 +45,7 @@ resource "scaleway_block_volume" "worker_external" {
   count = 4 # One per worker instance
 
   name       = "complete-example-worker-external-${format("%02d", count.index)}"
-  project_id = "d9191cb0-d164-47ec-8d04-2b1dd8dad3eb"
+  project_id = "11111110-d164-47ec-8d04-111111111111"
   zone       = "fr-par-1"
   iops       = 5000
   size_in_gb = 50
