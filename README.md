@@ -196,15 +196,15 @@ module.compute.security_groups
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10.7 |
-| <a name="requirement_scaleway"></a> [scaleway](#requirement\_scaleway) | ~> 2.64 |
+| <a name="requirement_scaleway"></a> [scaleway](#requirement\_scaleway) | ~> 2.73 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_scaleway"></a> [scaleway](#provider\_scaleway) | 2.68.0 |
+| ---- | ------- |
+| <a name="provider_scaleway"></a> [scaleway](#provider\_scaleway) | 2.73.0 |
 
 ## Modules
 
@@ -213,7 +213,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [scaleway_block_volume.this](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/block_volume) | resource |
 | [scaleway_iam_ssh_key.this](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/iam_ssh_key) | resource |
 | [scaleway_instance_ip.this](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/instance_ip) | resource |
@@ -230,7 +230,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_create_placement_group"></a> [create\_placement\_group](#input\_create\_placement\_group) | Create a shared placement group. | `bool` | `false` | no |
 | <a name="input_create_security_group"></a> [create\_security\_group](#input\_create\_security\_group) | Create a shared security group for all instances. | `bool` | `true` | no |
 | <a name="input_create_ssh_key"></a> [create\_ssh\_key](#input\_create\_ssh\_key) | Create and upload an SSH key. | `bool` | `false` | no |
@@ -258,7 +258,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_block_volumes"></a> [block\_volumes](#output\_block\_volumes) | Map of additional SBS block volumes keyed by volume key. |
 | <a name="output_group_security_group_ids"></a> [group\_security\_group\_ids](#output\_group\_security\_group\_ids) | Map of instance group names to their dedicated security group IDs (only groups with custom rules). |
 | <a name="output_instances"></a> [instances](#output\_instances) | Map of all instances keyed by '<group>-<index>' with id, name, type, state, zone, public\_ip, private\_ip. |

@@ -37,6 +37,6 @@ pre-commit:
       if [ "${SKIP_OSV_SCAN:-false}" = "true" ]; then
         echo "Skipping OSV Scanner"
       else
-        osv-scanner -r .
+        osv-scanner scan source -r .
       fi
     - pre-commit run -a -v --show-diff-on-failure --color always
