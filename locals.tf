@@ -64,7 +64,7 @@ locals {
         # Security group priority: external ID > per-group SG > shared SG
         external_security_group_id = group.security_group_id
         has_group_security_group   = group.security_group_id == null && contains(keys(local.security_groups_to_create), group_name)
-        placement_group_id         = coalesce(group.placement_group_id, local.placement_group_id)
+        placement_group_id         = group.placement_group_id != null ? group.placement_group_id : local.placement_group_id
         enable_backup              = group.enable_backup_snapshot
         additional_volumes         = group.additional_volumes
         external_volume_ids        = group.external_volume_ids

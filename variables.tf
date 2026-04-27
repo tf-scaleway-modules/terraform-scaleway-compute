@@ -1,5 +1,5 @@
 # ==============================================================================
-# Organization & Project
+# Required - Organization, Project, and Workload Identity
 # ==============================================================================
 
 variable "organization_id" {
@@ -18,34 +18,9 @@ variable "project_name" {
 }
 
 variable "name" {
-  description = "Name for resource naming and tagging."
+  description = "Workload name used as a prefix for resource naming and tagging."
   type        = string
 }
-
-# ==============================================================================
-# Global Configuration
-# ==============================================================================
-
-variable "zone" {
-  description = "Scaleway zone (e.g., fr-par-1, nl-ams-1)."
-  type        = string
-  default     = "fr-par-1"
-
-  validation {
-    condition     = can(regex("^(fr-par|nl-ams|pl-waw)-[1-3]$", var.zone))
-    error_message = "Zone must be a valid Scaleway zone (e.g., fr-par-1, nl-ams-1, pl-waw-2)."
-  }
-}
-
-variable "tags" {
-  description = "Global tags applied to all resources."
-  type        = list(string)
-  default     = []
-}
-
-# ==============================================================================
-# Instances Configuration
-# ==============================================================================
 
 variable "instances" {
   description = "Map of instance groups to create. Each group can have different count, type, image, etc."
@@ -61,15 +36,14 @@ variable "instances" {
     user_data           = optional(map(string), {})
     create_public_ip    = optional(bool, true)
     private_networks = optional(list(object({
-      id         = string           # Private network ID
-      ip_address = optional(string) # Optional static IP in the private network
+      id         = string
+      ip_address = optional(string)
     })), [])
-    # Security group configuration (per instance group)
-    security_group_id       = optional(string) # Use existing security group ID (skips creation)
-    create_security_group   = optional(bool)   # Create a security group for this group (default: use global setting)
-    inbound_default_policy  = optional(string) # Default inbound policy: accept or drop
-    outbound_default_policy = optional(string) # Default outbound policy: accept or drop
-    stateful                = optional(bool)   # Enable stateful security group
+    security_group_id       = optional(string)
+    create_security_group   = optional(bool)
+    inbound_default_policy  = optional(string)
+    outbound_default_policy = optional(string)
+    stateful                = optional(bool)
     inbound_rules = optional(list(object({
       action     = optional(string, "accept")
       protocol   = optional(string, "TCP")
@@ -88,12 +62,11 @@ variable "instances" {
     enable_backup_snapshot = optional(bool, false)
     additional_volumes = optional(list(object({
       size_gb = number
-      type    = optional(string, "sbs_5k") # sbs_5k, sbs_15k (IOPS tiers), or l_ssd (local)
-      iops    = optional(number)           # Custom IOPS (only for SBS volumes)
+      type    = optional(string, "sbs_5k")
+      iops    = optional(number)
     })), [])
-    # IDs of externally created volumes to attach.
-    # IMPORTANT: Only works when count <= 1. Block volumes can only be attached
-    # to ONE instance at a time - they cannot be shared across multiple instances.
+    # Block volumes can only be attached to ONE instance at a time, so external_volume_ids
+    # is only valid when count <= 1. Enforced by precondition on scaleway_instance_server.this.
     external_volume_ids = optional(list(string), [])
   }))
 
@@ -142,6 +115,27 @@ variable "instances" {
     ])
     error_message = "Cannot specify both security_group_id and custom inbound_rules/outbound_rules. Use one or the other."
   }
+}
+
+# ==============================================================================
+# Global Configuration
+# ==============================================================================
+
+variable "zone" {
+  description = "Scaleway zone (e.g., fr-par-1, nl-ams-1)."
+  type        = string
+  default     = "fr-par-1"
+
+  validation {
+    condition     = can(regex("^(fr-par|nl-ams|pl-waw)-[1-3]$", var.zone))
+    error_message = "Zone must be a valid Scaleway zone (e.g., fr-par-1, nl-ams-1, pl-waw-2)."
+  }
+}
+
+variable "tags" {
+  description = "Global tags applied to all resources."
+  type        = list(string)
+  default     = []
 }
 
 # ==============================================================================
@@ -324,8 +318,8 @@ variable "placement_group_policy_mode" {
 variable "private_networks" {
   description = "Default private networks for all instances. Each network can have an optional static IP."
   type = list(object({
-    id         = string           # Private network ID
-    ip_address = optional(string) # Optional static IP in the private network
+    id         = string
+    ip_address = optional(string)
   }))
   default = []
 }
@@ -344,18 +338,6 @@ variable "public_ip_type" {
 # ==============================================================================
 # Lifecycle Configuration
 # ==============================================================================
-
-# tflint-ignore: terraform_unused_declarations
-variable "ignore_tags_changes" {
-  description = <<-EOT
-    Ignore changes to tags made outside of Terraform. Useful when external systems add tags.
-    NOTE: Due to Terraform limitations, this variable is for documentation purposes only.
-    To actually ignore tag changes, modify the module source or use a wrapper module with
-    lifecycle { ignore_changes = [tags] }.
-  EOT
-  type        = bool
-  default     = false
-}
 
 variable "timeouts" {
   description = "Resource operation timeouts for create, update, and delete operations."
