@@ -198,13 +198,13 @@ module.compute.security_groups
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10.7 |
-| <a name="requirement_scaleway"></a> [scaleway](#requirement\_scaleway) | ~> 2.73 |
+| <a name="requirement_scaleway"></a> [scaleway](#requirement\_scaleway) | ~> 2.86 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_scaleway"></a> [scaleway](#provider\_scaleway) | 2.73.0 |
+| <a name="provider_scaleway"></a> [scaleway](#provider\_scaleway) | ~> 2.86 |
 
 ## Modules
 
@@ -242,7 +242,7 @@ No modules.
 | <a name="input_outbound_default_policy"></a> [outbound\_default\_policy](#input\_outbound\_default\_policy) | Default outbound policy: accept or drop. | `string` | `"accept"` | no |
 | <a name="input_outbound_rules"></a> [outbound\_rules](#input\_outbound\_rules) | Outbound security group rules. | <pre>list(object({<br/>    action     = optional(string, "accept")<br/>    protocol   = optional(string, "TCP")<br/>    port       = optional(number)<br/>    port_range = optional(string)<br/>    ip_range   = optional(string, "0.0.0.0/0")<br/>  }))</pre> | `[]` | no |
 | <a name="input_placement_group_id"></a> [placement\_group\_id](#input\_placement\_group\_id) | ID of existing placement group. | `string` | `null` | no |
-| <a name="input_placement_group_policy_mode"></a> [placement\_group\_policy\_mode](#input\_placement\_group\_policy\_mode) | Placement mode: optional or enforced. | `string` | `"optional"` | no |
+| <a name="input_placement_group_policy_mode"></a> [placement\_group\_policy\_mode](#input\_placement\_group\_policy\_mode) | Deprecated (removed with Instance API v1): placement mode, optional or enforced. Leave null to use the API default (optional). | `string` | `null` | no |
 | <a name="input_placement_group_policy_type"></a> [placement\_group\_policy\_type](#input\_placement\_group\_policy\_type) | Placement policy: low\_latency or max\_availability. | `string` | `"max_availability"` | no |
 | <a name="input_private_networks"></a> [private\_networks](#input\_private\_networks) | Default private networks for all instances. Each network can have an optional static IP. | <pre>list(object({<br/>    id         = string<br/>    ip_address = optional(string)<br/>  }))</pre> | `[]` | no |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Scaleway Project name where all resources will be created. | `string` | n/a | yes |
@@ -350,7 +350,7 @@ This module is provided "as is" without warranty of any kind. Use at your own ri
 [apache-shield]: https://img.shields.io/badge/License-Apache%202.0-blue.svg
 [terraform-badge]: https://img.shields.io/badge/Terraform-%3E%3D1.10-623CE4
 [terraform-url]: https://www.terraform.io
-[scaleway-badge]: https://img.shields.io/badge/Scaleway%20Provider-%3E%3D2.64-4f0599
+[scaleway-badge]: https://img.shields.io/badge/Scaleway%20Provider-%3E%3D2.86-4f0599
 [scaleway-url]: https://registry.terraform.io/providers/scaleway/scaleway/
 [release-badge]: https://img.shields.io/gitlab/v/release/leminnov/terraform/modules/scaleway-compute?include_prereleases&sort=semver
 [release-url]: https://gitlab.com/leminnov/terraform/modules/scaleway-compute/-/releases

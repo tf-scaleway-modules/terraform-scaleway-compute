@@ -513,11 +513,6 @@ module "compute" {
   # - low_latency: Place instances close together (performance)
   placement_group_policy_type = "max_availability"
 
-  # Policy modes:
-  # - optional: Best effort placement
-  # - enforced: Fail if placement cannot be satisfied
-  placement_group_policy_mode = "optional"
-
   # ============================================================================
   # Network Configuration
   # ============================================================================

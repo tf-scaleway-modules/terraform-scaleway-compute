@@ -301,12 +301,12 @@ variable "placement_group_policy_type" {
 }
 
 variable "placement_group_policy_mode" {
-  description = "Placement mode: optional or enforced."
+  description = "Deprecated (removed with Instance API v1): placement mode, optional or enforced. Leave null to use the API default (optional)."
   type        = string
-  default     = "optional"
+  default     = null
 
   validation {
-    condition     = contains(["optional", "enforced"], var.placement_group_policy_mode)
+    condition     = var.placement_group_policy_mode == null || contains(["optional", "enforced"], var.placement_group_policy_mode)
     error_message = "Placement group policy mode must be 'optional' or 'enforced'."
   }
 }
