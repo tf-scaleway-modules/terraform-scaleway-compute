@@ -9,19 +9,19 @@ mock_provider "scaleway" {
     defaults = { id = "00000000-0000-0000-0000-000000000000" }
   }
   mock_resource "scaleway_block_volume" {
-    defaults = { id = "00000000-0000-0000-0000-000000000001" }
+    defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000001" }
   }
   mock_resource "scaleway_instance_volume" {
-    defaults = { id = "00000000-0000-0000-0000-000000000002" }
+    defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000002" }
   }
   mock_resource "scaleway_instance_ip" {
-    defaults = { id = "00000000-0000-0000-0000-000000000003" }
+    defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000003" }
   }
   mock_resource "scaleway_instance_security_group" {
-    defaults = { id = "00000000-0000-0000-0000-000000000004" }
+    defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000004" }
   }
   mock_resource "scaleway_instance_placement_group" {
-    defaults = { id = "00000000-0000-0000-0000-000000000005" }
+    defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000005" }
   }
 }
 
