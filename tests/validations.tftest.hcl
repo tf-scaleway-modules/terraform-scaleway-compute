@@ -23,6 +23,12 @@ mock_provider "scaleway" {
       id = "00000000-0000-0000-0000-000000000000"
     }
   }
+  # Provider >= 2.76 validates security_group_id as zone/uuid
+  mock_resource "scaleway_instance_security_group" {
+    defaults = {
+      id = "fr-par-1/00000000-0000-0000-0000-000000000004"
+    }
+  }
 }
 
 # ------------------------------------------------------------------------------
