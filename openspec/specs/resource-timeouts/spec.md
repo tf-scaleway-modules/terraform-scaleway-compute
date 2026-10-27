@@ -1,37 +1,35 @@
-## ADDED Requirements
+# resource-timeouts Specification
 
-### Requirement: Configurable instance timeouts
-The module SHALL provide a `timeouts` variable to configure create, update, and delete timeouts for instance resources.
+## Purpose
+The `timeouts` input that sets create, update and delete timeouts on instances and, for create and delete, on SBS block volumes.
 
-#### Scenario: Default timeouts applied
-- **WHEN** user does not specify `timeouts` variable
-- **THEN** instance operations use default timeout of 10 minutes for create, update, and delete
-
-#### Scenario: Custom timeouts applied
-- **WHEN** user specifies `timeouts = { create = "20m", delete = "15m" }`
-- **THEN** instance create operations timeout after 20 minutes and delete operations timeout after 15 minutes
-
-### Requirement: Configurable volume timeouts
-The module SHALL apply the `timeouts` configuration to block volume resources.
-
-#### Scenario: Volume creation respects timeout
-- **WHEN** user specifies `timeouts = { create = "15m" }`
-- **THEN** block volume creation operations timeout after 15 minutes
-
-### Requirement: Configurable security group timeouts
-The module SHALL apply the `timeouts` configuration to security group resources.
-
-#### Scenario: Security group creation respects timeout
-- **WHEN** user specifies `timeouts = { create = "5m" }`
-- **THEN** security group creation operations timeout after 5 minutes
+## Requirements
 
 ### Requirement: Timeout variable structure
-The module SHALL accept a `timeouts` variable with optional `create`, `update`, and `delete` string fields in duration format (e.g., "10m", "1h").
+The module SHALL accept a `timeouts` object with optional string fields `create`, `update` and `delete`, each defaulting to `"10m"`, and `timeouts` itself SHALL default to `{}`.
 
-#### Scenario: Partial timeout configuration
-- **WHEN** user specifies `timeouts = { create = "20m" }` without update or delete
-- **THEN** create uses 20 minutes and update/delete use defaults
+#### Scenario: Default timeouts
+- **WHEN** `timeouts` is not set
+- **THEN** create, update and delete are `"10m"`
 
-#### Scenario: Empty timeout uses defaults
-- **WHEN** user specifies `timeouts = {}`
-- **THEN** all operations use default timeout of 10 minutes
+#### Scenario: Partial configuration
+- **WHEN** `timeouts = { create = "20m" }`
+- **THEN** create is `"20m"` and update and delete stay `"10m"`
+
+#### Scenario: Empty object
+- **WHEN** `timeouts = {}`
+- **THEN** all three are `"10m"`
+
+### Requirement: Instance timeouts
+The module SHALL apply `timeouts.create`, `timeouts.update` and `timeouts.delete` to every `scaleway_instance_server`.
+
+#### Scenario: Custom instance timeouts
+- **WHEN** `timeouts = { create = "20m", delete = "15m" }`
+- **THEN** each server has create `"20m"`, update `"10m"` and delete `"15m"`
+
+### Requirement: Block volume timeouts
+The module SHALL apply `timeouts.create` and `timeouts.delete` to every `scaleway_block_volume`; `timeouts.update` SHALL NOT be applied to block volumes.
+
+#### Scenario: Block volume create timeout
+- **WHEN** `timeouts = { create = "15m" }` and an instance has an `sbs_5k` additional volume
+- **THEN** the block volume has create timeout `"15m"` and delete timeout `"10m"`
