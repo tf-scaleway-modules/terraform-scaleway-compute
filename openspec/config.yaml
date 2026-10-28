@@ -42,10 +42,11 @@ context: |
   placement.tf, iam.tf (SSH key), data.tf (project lookup), locals.tf
   (flattening of groups into servers and volumes, tag and security group
   resolution). variables.tf is the whole input contract (validation blocks for
-  enums and formats); outputs.tf exposes IDs and addresses. There is no
-  checks.tf: cross-input rules are resource preconditions in main.tf and
-  iam.tf. tests/*.tftest.hcl are unit tests with mock_provider "scaleway"
-  (conditional_creation, instance_flattening, validations); there is no
+  enums and formats); outputs.tf exposes IDs and addresses. Cross-input
+  rules are resource preconditions in main.tf and iam.tf; checks.tf holds the
+  plan-time `check` warnings for accepted but ignored inputs.
+  tests/*.tftest.hcl are unit tests with mock_provider "scaleway"
+  (conditional_creation, instance_flattening, validations, main); there is no
   integration fixture. examples/minimal and examples/complete are the examples.
 
   Module-specific conventions (the generic ones are standards in the quality,

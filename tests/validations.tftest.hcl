@@ -234,6 +234,135 @@ run "inbound_rules_reject_port_and_port_range_together" {
   expect_failures = [var.inbound_rules]
 }
 
+run "inbound_rules_reject_out_of_range_cidr" {
+  command = plan
+
+  variables {
+    inbound_rules = [
+      { protocol = "TCP", port = 22, ip_range = "999.0.0.0/99" }
+    ]
+  }
+
+  expect_failures = [var.inbound_rules]
+}
+
+run "outbound_rules_reject_out_of_range_cidr" {
+  command = plan
+
+  variables {
+    outbound_rules = [
+      { protocol = "TCP", port = 443, ip_range = "10.0.0.0/33" }
+    ]
+  }
+
+  expect_failures = [var.outbound_rules]
+}
+
+# ------------------------------------------------------------------------------
+# Group-level rule and policy validation
+# ------------------------------------------------------------------------------
+
+run "instances_accept_valid_group_rules" {
+  command = plan
+
+  variables {
+    instances = {
+      web = {
+        count                  = 1
+        instance_type          = "DEV1-S"
+        inbound_default_policy = "drop"
+        inbound_rules          = [{ protocol = "TCP", port = 5432, ip_range = "10.0.0.0/8" }]
+        outbound_rules         = [{ protocol = "UDP", port_range = "50-60", ip_range = "10.0.0.0/8" }]
+      }
+    }
+  }
+
+  assert {
+    condition     = length(scaleway_instance_security_group.group) == 1
+    error_message = "A valid group-level rule set should plan one per-group security group."
+  }
+}
+
+run "instances_reject_group_rule_invalid_protocol" {
+  command = plan
+
+  variables {
+    instances = {
+      web = {
+        count         = 1
+        instance_type = "DEV1-S"
+        inbound_rules = [{ protocol = "HTTP", port = 80 }]
+      }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
+run "instances_reject_group_rule_invalid_cidr" {
+  command = plan
+
+  variables {
+    instances = {
+      web = {
+        count          = 1
+        instance_type  = "DEV1-S"
+        outbound_rules = [{ protocol = "TCP", port = 443, ip_range = "999.0.0.0/99" }]
+      }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
+run "instances_reject_group_rule_port_and_port_range" {
+  command = plan
+
+  variables {
+    instances = {
+      web = {
+        count         = 1
+        instance_type = "DEV1-S"
+        inbound_rules = [{ port = 443, port_range = "8000-8999" }]
+      }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
+run "instances_reject_invalid_group_inbound_default_policy" {
+  command = plan
+
+  variables {
+    instances = {
+      web = {
+        count                  = 1
+        instance_type          = "DEV1-S"
+        inbound_default_policy = "deny"
+      }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
+run "instances_reject_invalid_group_outbound_default_policy" {
+  command = plan
+
+  variables {
+    instances = {
+      web = {
+        count                   = 1
+        instance_type           = "DEV1-S"
+        outbound_default_policy = "deny"
+      }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
 # ------------------------------------------------------------------------------
 # Placement group validation
 # ------------------------------------------------------------------------------

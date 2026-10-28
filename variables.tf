@@ -35,11 +35,13 @@ variable "instances" {
     cloud_init          = optional(string)
     user_data           = optional(map(string), {})
     create_public_ip    = optional(bool, true)
+    # ip_address is accepted but NOT applied: the server only receives the network id.
     private_networks = optional(list(object({
       id         = string
       ip_address = optional(string)
     })), [])
-    security_group_id       = optional(string)
+    security_group_id = optional(string)
+    # create_security_group is accepted but ignored (a check warns when it is set).
     create_security_group   = optional(bool)
     inbound_default_policy  = optional(string)
     outbound_default_policy = optional(string)
@@ -115,6 +117,46 @@ variable "instances" {
     ])
     error_message = "Cannot specify both security_group_id and custom inbound_rules/outbound_rules. Use one or the other."
   }
+
+  validation {
+    condition = alltrue([
+      for v in values(var.instances) : alltrue([
+        for rule in concat(coalesce(v.inbound_rules, []), coalesce(v.outbound_rules, [])) :
+        contains(["TCP", "UDP", "ICMP", "ANY"], rule.protocol)
+      ])
+    ])
+    error_message = "Instance group rule protocol must be 'TCP', 'UDP', 'ICMP', or 'ANY'."
+  }
+
+  validation {
+    condition = alltrue([
+      for v in values(var.instances) : alltrue([
+        for rule in concat(coalesce(v.inbound_rules, []), coalesce(v.outbound_rules, [])) :
+        can(cidrhost(rule.ip_range, 0)) && !strcontains(rule.ip_range, ":")
+      ])
+    ])
+    error_message = "Instance group rule ip_range must be valid CIDR notation (e.g., '10.0.0.0/8', '0.0.0.0/0')."
+  }
+
+  validation {
+    condition = alltrue([
+      for v in values(var.instances) : alltrue([
+        for rule in concat(coalesce(v.inbound_rules, []), coalesce(v.outbound_rules, [])) :
+        !(rule.port != null && rule.port_range != null)
+      ])
+    ])
+    error_message = "Instance group rule cannot specify both 'port' and 'port_range' - use one or the other."
+  }
+
+  validation {
+    condition = alltrue([
+      for v in values(var.instances) : alltrue([
+        for policy in [v.inbound_default_policy, v.outbound_default_policy] :
+        policy == null || contains(["accept", "drop"], policy)
+      ])
+    ])
+    error_message = "Instance group default policies must be 'accept' or 'drop'."
+  }
 }
 
 # ==============================================================================
@@ -149,7 +191,7 @@ variable "create_ssh_key" {
 }
 
 variable "ssh_public_key" {
-  description = "SSH public key content."
+  description = "SSH public key content. A public key is not a secret: it is sensitive only to keep it out of plan output, is not ephemeral because scaleway_iam_ssh_key has no write-only argument, and is stored in state. Scaleway scopes the key to the Project and copies it to every Instance of the Project at boot."
   type        = string
   default     = null
   sensitive   = true
@@ -172,7 +214,7 @@ variable "create_security_group" {
 }
 
 variable "security_group_id" {
-  description = "ID of existing security group (when create_security_group is false)."
+  description = "ID of existing security group used as the shared group when create_security_group is false. Ignored (a check warns) when create_security_group is true."
   type        = string
   default     = null
 }
@@ -227,7 +269,7 @@ variable "inbound_rules" {
 
   validation {
     condition = alltrue([
-      for rule in var.inbound_rules : can(regex("^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$", rule.ip_range))
+      for rule in var.inbound_rules : can(cidrhost(rule.ip_range, 0)) && !strcontains(rule.ip_range, ":")
     ])
     error_message = "Inbound rule ip_range must be valid CIDR notation (e.g., '10.0.0.0/8', '0.0.0.0/0')."
   }
@@ -260,7 +302,7 @@ variable "outbound_rules" {
 
   validation {
     condition = alltrue([
-      for rule in var.outbound_rules : can(regex("^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$", rule.ip_range))
+      for rule in var.outbound_rules : can(cidrhost(rule.ip_range, 0)) && !strcontains(rule.ip_range, ":")
     ])
     error_message = "Outbound rule ip_range must be valid CIDR notation (e.g., '10.0.0.0/8', '0.0.0.0/0')."
   }
@@ -316,7 +358,7 @@ variable "placement_group_policy_mode" {
 # ==============================================================================
 
 variable "private_networks" {
-  description = "Default private networks for all instances. Each network can have an optional static IP."
+  description = "Default private networks for all instances. Only the network id is applied; ip_address is accepted but has no effect (a check warns when it is set)."
   type = list(object({
     id         = string
     ip_address = optional(string)
