@@ -47,18 +47,20 @@ locals {
     for group_name, group in var.instances : {
       for idx in range(group.count) :
       "${group_name}-${format("%02d", idx)}" => {
-        group_name       = group_name
-        index            = idx
-        name             = "${var.name}-${group_name}-${format("%02d", idx)}"
-        instance_type    = group.instance_type
-        image            = group.image
-        root_volume_size = group.root_volume_size_gb
-        root_volume_type = group.root_volume_type
-        state            = group.state
-        tags             = distinct(concat(local.global_tags, ["group:${group_name}"], group.tags))
-        cloud_init       = group.cloud_init
-        user_data        = group.user_data
-        create_public_ip = group.create_public_ip
+        group_name        = group_name
+        index             = idx
+        name              = "${var.name}-${group_name}-${format("%02d", idx)}"
+        instance_type     = group.instance_type
+        image             = group.image
+        root_volume_size  = group.root_volume_size_gb
+        root_volume_type  = group.root_volume_type
+        root_volume_iops  = group.root_volume_sbs_iops
+        enable_protection = group.enable_protection
+        state             = group.state
+        tags              = distinct(concat(local.global_tags, ["group:${group_name}"], group.tags))
+        cloud_init        = group.cloud_init
+        user_data         = group.user_data
+        create_public_ip  = group.create_public_ip
         # Private networks (instance-specific or default)
         private_networks = length(group.private_networks) > 0 ? group.private_networks : local.default_private_networks
         # Security group priority: external ID > per-group SG > shared SG

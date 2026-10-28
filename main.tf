@@ -11,6 +11,7 @@ resource "scaleway_instance_server" "this" {
   type       = each.value.instance_type
   image      = each.value.image
   state      = each.value.state
+  protected  = each.value.enable_protection
 
   ip_id = each.value.create_public_ip ? scaleway_instance_ip.this[each.key].id : null
 
@@ -44,6 +45,7 @@ resource "scaleway_instance_server" "this" {
   root_volume {
     size_in_gb            = each.value.root_volume_size
     volume_type           = each.value.root_volume_type
+    sbs_iops              = each.value.root_volume_iops
     delete_on_termination = true
   }
 
