@@ -379,6 +379,8 @@ module "compute" {
   # SSH Key Configuration
   # ============================================================================
 
+  # The IAM SSH key is scoped to the Project and copied to every Instance of the
+  # Project at boot, not only to the instances of this module.
   create_ssh_key      = true
   ssh_public_key_file = "~/.ssh/id_ed25519.pub"
 
