@@ -16,7 +16,7 @@ A production-ready Terraform module for creating and managing **Scaleway** Compu
 - **External Volume Attachment**: Attach externally created volumes to instances via IDs
 - **Placement Groups**: High availability or low latency configurations
 - **Cloud-Init**: Full cloud-init and user data support per group
-- **SSH Keys**: Automatic SSH key management
+- **SSH Keys**: Optional Project-level IAM SSH key
 - **Backup Snapshots**: Optional snapshot creation per instance group
 - **Reserved IPs**: Static public IP allocation per instance
 
@@ -236,7 +236,7 @@ No modules.
 | <a name="input_create_ssh_key"></a> [create\_ssh\_key](#input\_create\_ssh\_key) | Create and upload an SSH key. | `bool` | `false` | no |
 | <a name="input_inbound_default_policy"></a> [inbound\_default\_policy](#input\_inbound\_default\_policy) | Default inbound policy: accept or drop. | `string` | `"drop"` | no |
 | <a name="input_inbound_rules"></a> [inbound\_rules](#input\_inbound\_rules) | Inbound security group rules. | <pre>list(object({<br/>    action     = optional(string, "accept")<br/>    protocol   = optional(string, "TCP")<br/>    port       = optional(number)<br/>    port_range = optional(string)<br/>    ip_range   = optional(string, "0.0.0.0/0")<br/>  }))</pre> | <pre>[<br/>  {<br/>    "ip_range": "0.0.0.0/0",<br/>    "port": 22,<br/>    "protocol": "TCP"<br/>  }<br/>]</pre> | no |
-| <a name="input_instances"></a> [instances](#input\_instances) | Map of instance groups to create. Each group can have different count, type, image, etc. | <pre>map(object({<br/>    count               = number<br/>    instance_type       = string<br/>    image               = optional(string, "ubuntu_noble")<br/>    root_volume_size_gb = optional(number, 20)<br/>    root_volume_type    = optional(string, "l_ssd")<br/>    state               = optional(string, "started")<br/>    tags                = optional(list(string), [])<br/>    cloud_init          = optional(string)<br/>    user_data           = optional(map(string), {})<br/>    create_public_ip    = optional(bool, true)<br/>    private_networks = optional(list(object({<br/>      id         = string<br/>      ip_address = optional(string)<br/>    })), [])<br/>    security_group_id       = optional(string)<br/>    create_security_group   = optional(bool)<br/>    inbound_default_policy  = optional(string)<br/>    outbound_default_policy = optional(string)<br/>    stateful                = optional(bool)<br/>    inbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })))<br/>    outbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })))<br/>    placement_group_id     = optional(string)<br/>    enable_backup_snapshot = optional(bool, false)<br/>    additional_volumes = optional(list(object({<br/>      size_gb = number<br/>      type    = optional(string, "sbs_5k")<br/>      iops    = optional(number)<br/>    })), [])<br/>    # Block volumes can only be attached to ONE instance at a time, so external_volume_ids<br/>    # is only valid when count <= 1. Enforced by precondition on scaleway_instance_server.this.<br/>    external_volume_ids = optional(list(string), [])<br/>  }))</pre> | n/a | yes |
+| <a name="input_instances"></a> [instances](#input\_instances) | Map of instance groups to create. Each group can have different count, type, image, etc. | <pre>map(object({<br/>    count               = number<br/>    instance_type       = string<br/>    image               = optional(string, "ubuntu_noble")<br/>    root_volume_size_gb = optional(number, 20)<br/>    root_volume_type    = optional(string, "l_ssd")<br/>    state               = optional(string, "started")<br/>    tags                = optional(list(string), [])<br/>    cloud_init          = optional(string)<br/>    user_data           = optional(map(string), {})<br/>    create_public_ip    = optional(bool, true)<br/>    # ip_address is accepted but NOT applied: the server only receives the network id.<br/>    private_networks = optional(list(object({<br/>      id         = string<br/>      ip_address = optional(string)<br/>    })), [])<br/>    security_group_id = optional(string)<br/>    # create_security_group is accepted but ignored (a check warns when it is set).<br/>    create_security_group   = optional(bool)<br/>    inbound_default_policy  = optional(string)<br/>    outbound_default_policy = optional(string)<br/>    stateful                = optional(bool)<br/>    inbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })))<br/>    outbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })))<br/>    placement_group_id     = optional(string)<br/>    enable_backup_snapshot = optional(bool, false)<br/>    additional_volumes = optional(list(object({<br/>      size_gb = number<br/>      type    = optional(string, "sbs_5k")<br/>      iops    = optional(number)<br/>    })), [])<br/>    # Block volumes can only be attached to ONE instance at a time, so external_volume_ids<br/>    # is only valid when count <= 1. Enforced by precondition on scaleway_instance_server.this.<br/>    external_volume_ids = optional(list(string), [])<br/>  }))</pre> | n/a | yes |
 | <a name="input_name"></a> [name](#input\_name) | Workload name used as a prefix for resource naming and tagging. | `string` | n/a | yes |
 | <a name="input_organization_id"></a> [organization\_id](#input\_organization\_id) | Scaleway Organization ID. | `string` | n/a | yes |
 | <a name="input_outbound_default_policy"></a> [outbound\_default\_policy](#input\_outbound\_default\_policy) | Default outbound policy: accept or drop. | `string` | `"accept"` | no |
@@ -244,11 +244,11 @@ No modules.
 | <a name="input_placement_group_id"></a> [placement\_group\_id](#input\_placement\_group\_id) | ID of existing placement group. | `string` | `null` | no |
 | <a name="input_placement_group_policy_mode"></a> [placement\_group\_policy\_mode](#input\_placement\_group\_policy\_mode) | Deprecated (removed with Instance API v1): placement mode, optional or enforced. Leave null to use the API default (optional). | `string` | `null` | no |
 | <a name="input_placement_group_policy_type"></a> [placement\_group\_policy\_type](#input\_placement\_group\_policy\_type) | Placement policy: low\_latency or max\_availability. | `string` | `"max_availability"` | no |
-| <a name="input_private_networks"></a> [private\_networks](#input\_private\_networks) | Default private networks for all instances. Each network can have an optional static IP. | <pre>list(object({<br/>    id         = string<br/>    ip_address = optional(string)<br/>  }))</pre> | `[]` | no |
+| <a name="input_private_networks"></a> [private\_networks](#input\_private\_networks) | Default private networks for all instances. Only the network id is applied; ip\_address is accepted but has no effect (a check warns when it is set). | <pre>list(object({<br/>    id         = string<br/>    ip_address = optional(string)<br/>  }))</pre> | `[]` | no |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Scaleway Project name where all resources will be created. | `string` | n/a | yes |
 | <a name="input_public_ip_type"></a> [public\_ip\_type](#input\_public\_ip\_type) | Type of public IP: routed\_ipv4, routed\_ipv6, or nat. | `string` | `"routed_ipv4"` | no |
-| <a name="input_security_group_id"></a> [security\_group\_id](#input\_security\_group\_id) | ID of existing security group (when create\_security\_group is false). | `string` | `null` | no |
-| <a name="input_ssh_public_key"></a> [ssh\_public\_key](#input\_ssh\_public\_key) | SSH public key content. | `string` | `null` | no |
+| <a name="input_security_group_id"></a> [security\_group\_id](#input\_security\_group\_id) | ID of existing security group used as the shared group when create\_security\_group is false. Ignored (a check warns) when create\_security\_group is true. | `string` | `null` | no |
+| <a name="input_ssh_public_key"></a> [ssh\_public\_key](#input\_ssh\_public\_key) | SSH public key content. A public key is not a secret: it is sensitive only to keep it out of plan output, is not ephemeral because scaleway\_iam\_ssh\_key has no write-only argument, and is stored in state. Scaleway scopes the key to the Project and copies it to every Instance of the Project at boot. | `string` | `null` | no |
 | <a name="input_ssh_public_key_file"></a> [ssh\_public\_key\_file](#input\_ssh\_public\_key\_file) | Path to SSH public key file. | `string` | `null` | no |
 | <a name="input_stateful"></a> [stateful](#input\_stateful) | Enable stateful security group. | `bool` | `true` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Global tags applied to all resources. | `list(string)` | `[]` | no |
@@ -300,7 +300,7 @@ module "compute" {
 }
 ```
 
-Timeouts apply to instances, block volumes, and security groups.
+Timeouts apply to instances (create, update, delete) and SBS block volumes (create, delete). Public IPs, security groups, local volumes, snapshots, the placement group and the SSH key keep the provider defaults.
 
 ## Lifecycle Protection
 
@@ -334,7 +334,19 @@ lifecycle {
 
 ### Ignoring External Tag Changes
 
-Set `ignore_tags_changes = true` to prevent Terraform from detecting tag drift caused by external systems. Note: Due to Terraform limitations, this requires modifying the module source to add `ignore_changes = [tags]` to the lifecycle block.
+The module has no input to ignore tag drift caused by external systems. `lifecycle.ignore_changes` cannot be driven by a variable, so this requires forking the module and adding `ignore_changes = [tags]` to the lifecycle block of the resource concerned.
+
+## SSH Key
+
+With `create_ssh_key = true` the module creates one IAM SSH key from `ssh_public_key` or `ssh_public_key_file`. Scaleway scopes IAM SSH keys to the Project and copies them to every Instance of the Project, not only the ones created by this module, when the Instance boots. The module creates the key before the servers so it is present at their first boot; for existing Instances, reboot them or run `scw-fetch-ssh-keys --upgrade`. The key is a public key: `ssh_public_key` is `sensitive` only to keep it out of plan output, and it is stored in state.
+
+## Accepted but Ignored Inputs
+
+These inputs are accepted for compatibility and have no effect; a plan-time warning (`check`) is emitted when they are set:
+
+- `instances[*].create_security_group`
+- `private_networks[*].ip_address` (global and per group): servers get the address Scaleway assigns on the private network
+- `security_group_id` while `create_security_group = true`: the created shared group is used
 
 ## Contributing
 
