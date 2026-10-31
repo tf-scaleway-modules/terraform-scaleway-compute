@@ -400,3 +400,70 @@ run "public_ip_type_rejects_invalid_value" {
 
   expect_failures = [var.public_ip_type]
 }
+
+# ------------------------------------------------------------------------------
+# Root volume type, SBS IOPS and backup snapshot validation
+# ------------------------------------------------------------------------------
+
+run "root_volume_type_rejects_invalid_value" {
+  command = plan
+
+  variables {
+    instances = {
+      web = { count = 1, instance_type = "DEV1-S", root_volume_type = "ssd" }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
+run "root_volume_sbs_iops_rejects_local_root_volume" {
+  command = plan
+
+  variables {
+    instances = {
+      web = { count = 1, instance_type = "DEV1-S", root_volume_type = "l_ssd", root_volume_sbs_iops = 5000 }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
+run "root_volume_sbs_iops_rejects_unsupported_value" {
+  command = plan
+
+  variables {
+    instances = {
+      web = { count = 1, instance_type = "DEV1-S", root_volume_type = "sbs_volume", root_volume_sbs_iops = 7000 }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
+run "sbs_root_volume_rejects_backup_snapshot" {
+  command = plan
+
+  variables {
+    instances = {
+      web = { count = 1, instance_type = "DEV1-S", root_volume_type = "sbs_volume", enable_backup_snapshot = true }
+    }
+  }
+
+  expect_failures = [var.instances]
+}
+
+run "sbs_root_volume_accepts_supported_iops" {
+  command = plan
+
+  variables {
+    instances = {
+      web = { count = 1, instance_type = "DEV1-S", root_volume_type = "sbs_volume", root_volume_sbs_iops = 5000 }
+    }
+  }
+
+  assert {
+    condition     = scaleway_instance_server.this["web-00"].root_volume[0].volume_type == "sbs_volume"
+    error_message = "A valid SBS root volume with 5000 IOPS should be accepted."
+  }
+}
