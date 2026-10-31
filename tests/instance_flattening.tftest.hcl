@@ -235,3 +235,72 @@ run "snapshots_created_only_when_backup_enabled" {
     error_message = "Snapshots should only be created for instances in groups with enable_backup_snapshot = true."
   }
 }
+
+# ------------------------------------------------------------------------------
+# SBS root volume and deletion protection
+# ------------------------------------------------------------------------------
+
+run "sbs_root_volume_requests_iops" {
+  command = plan
+
+  variables {
+    instances = {
+      db = { count = 1, instance_type = "DEV1-S", root_volume_type = "sbs_volume", root_volume_sbs_iops = 15000 }
+    }
+  }
+
+  assert {
+    condition     = scaleway_instance_server.this["db-00"].root_volume[0].volume_type == "sbs_volume"
+    error_message = "root_volume_type = sbs_volume should create an SBS root volume."
+  }
+
+  assert {
+    condition     = scaleway_instance_server.this["db-00"].root_volume[0].sbs_iops == 15000
+    error_message = "root_volume_sbs_iops = 15000 should be requested on the root volume."
+  }
+}
+
+run "sbs_root_volume_without_iops_leaves_api_default" {
+  command = plan
+
+  variables {
+    instances = {
+      db = { count = 1, instance_type = "DEV1-S", root_volume_type = "sbs_volume" }
+    }
+  }
+
+  assert {
+    condition     = local.instances_flat["db-00"].root_volume_iops == null
+    error_message = "Without root_volume_sbs_iops no IOPS should be requested."
+  }
+}
+
+run "enable_protection_protects_servers" {
+  command = plan
+
+  variables {
+    instances = {
+      db = { count = 1, instance_type = "DEV1-S", enable_protection = true }
+    }
+  }
+
+  assert {
+    condition     = scaleway_instance_server.this["db-00"].protected == true
+    error_message = "enable_protection = true should protect the server."
+  }
+}
+
+run "servers_are_unprotected_by_default" {
+  command = plan
+
+  variables {
+    instances = {
+      web = { count = 1, instance_type = "DEV1-S" }
+    }
+  }
+
+  assert {
+    condition     = scaleway_instance_server.this["web-00"].protected == false
+    error_message = "Servers should be unprotected by default."
+  }
+}

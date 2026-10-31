@@ -30,11 +30,15 @@ variable "instances" {
     image               = optional(string, "ubuntu_noble")
     root_volume_size_gb = optional(number, 20)
     root_volume_type    = optional(string, "l_ssd")
-    state               = optional(string, "started")
-    tags                = optional(list(string), [])
-    cloud_init          = optional(string)
-    user_data           = optional(map(string), {})
-    create_public_ip    = optional(bool, true)
+    # Only valid with root_volume_type = "sbs_volume" (5000 or 15000); null keeps the API default.
+    root_volume_sbs_iops = optional(number)
+    state                = optional(string, "started")
+    # Protects the servers against deletion through the Scaleway API; unprotect and apply before destroy.
+    enable_protection = optional(bool, false)
+    tags              = optional(list(string), [])
+    cloud_init        = optional(string)
+    user_data         = optional(map(string), {})
+    create_public_ip  = optional(bool, true)
     # ip_address is accepted but NOT applied: the server only receives the network id.
     private_networks = optional(list(object({
       id         = string
@@ -88,9 +92,30 @@ variable "instances" {
 
   validation {
     condition = alltrue([
-      for k, v in var.instances : contains(["l_ssd", "b_ssd"], v.root_volume_type)
+      for k, v in var.instances : contains(["l_ssd", "b_ssd", "sbs_volume"], v.root_volume_type)
     ])
-    error_message = "Root volume type must be 'l_ssd' or 'b_ssd'."
+    error_message = "Root volume type must be 'l_ssd', 'b_ssd', or 'sbs_volume'."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.instances : v.root_volume_sbs_iops == null || v.root_volume_type == "sbs_volume"
+    ])
+    error_message = "root_volume_sbs_iops requires root_volume_type 'sbs_volume'."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.instances : v.root_volume_sbs_iops == null || contains([5000, 15000], v.root_volume_sbs_iops)
+    ])
+    error_message = "root_volume_sbs_iops must be 5000 or 15000."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.instances : !(v.root_volume_type == "sbs_volume" && v.enable_backup_snapshot)
+    ])
+    error_message = "enable_backup_snapshot is not supported with root_volume_type 'sbs_volume': Instance snapshots only support local volumes."
   }
 
   validation {

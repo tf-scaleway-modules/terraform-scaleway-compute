@@ -178,6 +178,9 @@ module "compute" {
 
       tags = ["database", "postgres", "tier:data"]
 
+      # Reject deletion through the API (set to false and apply before a destroy)
+      enable_protection = true
+
       # Additional SBS block volumes for data storage
       additional_volumes = [
         { size_gb = 200, type = "sbs_5k" },  # Data volume (5000 IOPS)
@@ -218,8 +221,11 @@ module "compute" {
       image         = "ubuntu_noble"
 
       root_volume_size_gb = 20
-      root_volume_type    = "l_ssd"
       state               = "started"
+
+      # SBS root volume with 15000 IOPS (no backup snapshot: Instance snapshots need a local volume)
+      root_volume_type     = "sbs_volume"
+      root_volume_sbs_iops = 15000
 
       tags = ["cache", "redis", "tier:caching"]
 
