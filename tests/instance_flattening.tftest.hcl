@@ -5,9 +5,6 @@
 # that additional volumes route to the correct backing resource (l_ssd vs SBS).
 
 mock_provider "scaleway" {
-  mock_data "scaleway_account_project" {
-    defaults = { id = "00000000-0000-0000-0000-000000000000" }
-  }
   mock_resource "scaleway_block_volume" {
     defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000001" }
   }
@@ -32,9 +29,7 @@ mock_provider "scaleway" {
 }
 
 variables {
-  organization_id = "00000000-0000-0000-0000-000000000000"
-  project_name    = "default"
-  name            = "test"
+  name = "test"
 }
 
 # ------------------------------------------------------------------------------
@@ -302,5 +297,133 @@ run "servers_are_unprotected_by_default" {
   assert {
     condition     = scaleway_instance_server.this["web-00"].protected == false
     error_message = "Servers should be unprotected by default."
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Backup of SBS root volumes uses block snapshots
+# ------------------------------------------------------------------------------
+
+run "sbs_root_backup_creates_block_snapshot" {
+  command = plan
+
+  variables {
+    instances = {
+      cache = { count = 2, instance_type = "DEV1-S", root_volume_type = "sbs_volume", enable_backup_snapshot = true }
+      db    = { count = 1, instance_type = "DEV1-S", enable_backup_snapshot = true }
+    }
+  }
+
+  assert {
+    condition     = length(scaleway_block_snapshot.this) == 2 && contains(keys(scaleway_block_snapshot.this), "cache-01")
+    error_message = "An sbs_volume root with backup should create one block snapshot per server."
+  }
+
+  assert {
+    condition     = length(scaleway_instance_snapshot.this) == 1 && contains(keys(scaleway_instance_snapshot.this), "db-00")
+    error_message = "Only the l_ssd root should create an instance snapshot."
+  }
+
+  assert {
+    condition     = scaleway_block_snapshot.this["cache-00"].name == "test-cache-00-snapshot"
+    error_message = "Snapshots should be named '<server name>-snapshot'."
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Dual stack public IPs
+# ------------------------------------------------------------------------------
+
+run "enable_ipv6_creates_routed_ipv6_ip_per_server" {
+  command = plan
+
+  variables {
+    instances = {
+      web = { count = 2, instance_type = "DEV1-S", enable_ipv6 = true }
+      app = { count = 1, instance_type = "DEV1-S" }
+    }
+  }
+
+  assert {
+    condition     = length(scaleway_instance_ip.this) == 3 && length(scaleway_instance_ip.ipv6) == 2
+    error_message = "Dual stack should add one IPv6 IP per server of the group only."
+  }
+
+  assert {
+    condition     = scaleway_instance_ip.ipv6["web-00"].type == "routed_ipv6" && scaleway_instance_ip.this["web-00"].type == "routed_ipv4"
+    error_message = "The IPs should be routed_ipv6 and routed_ipv4."
+  }
+
+  assert {
+    condition     = length(scaleway_instance_server.this["web-00"].ip_ids) == 2 && length(scaleway_instance_server.this["app-00"].ip_ids) == 1
+    error_message = "Dual stack servers should list two IP IDs, others one."
+  }
+}
+
+run "no_public_ip_leaves_ip_ids_empty" {
+  command = plan
+
+  variables {
+    instances = {
+      db = { count = 1, instance_type = "DEV1-S", create_public_ip = false }
+    }
+  }
+
+  assert {
+    condition     = length(scaleway_instance_server.this["db-00"].ip_ids) == 0
+    error_message = "A server without public IP should have no IP IDs."
+  }
+}
+
+run "group_public_ip_type_is_applied" {
+  command = plan
+
+  variables {
+    instances = {
+      v6 = { count = 1, instance_type = "DEV1-S", public_ip_type = "routed_ipv6" }
+    }
+  }
+
+  assert {
+    condition     = scaleway_instance_ip.this["v6-00"].type == "routed_ipv6"
+    error_message = "The group public_ip_type should be the IP type."
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Group tags on every group resource
+# ------------------------------------------------------------------------------
+
+run "group_tags_reach_volumes_and_ips" {
+  command = plan
+
+  variables {
+    tags = ["team:platform"]
+    instances = {
+      db = {
+        count         = 1
+        tags          = ["tier:data"]
+        instance_type = "DEV1-S"
+        additional_volumes = [
+          { size_gb = 50, type = "l_ssd" },
+          { size_gb = 100, type = "sbs_5k" },
+        ]
+      }
+    }
+  }
+
+  assert {
+    condition     = alltrue([for t in ["team:platform", "group:db", "tier:data"] : contains(scaleway_instance_volume.this["db-00-vol-00"].tags, t)])
+    error_message = "Local volumes should carry global tags, group:<group> and the group tags."
+  }
+
+  assert {
+    condition     = alltrue([for t in ["team:platform", "group:db", "tier:data"] : contains(scaleway_block_volume.this["db-00-vol-01"].tags, t)])
+    error_message = "SBS volumes should carry global tags, group:<group> and the group tags."
+  }
+
+  assert {
+    condition     = contains(scaleway_instance_ip.this["db-00"].tags, "tier:data")
+    error_message = "Public IPs should carry the group tags."
   }
 }

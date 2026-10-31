@@ -6,7 +6,7 @@ resource "scaleway_block_volume" "this" {
   for_each = local.sbs_volumes
 
   name       = each.value.name
-  project_id = local.project_id
+  project_id = var.project_id
   zone       = var.zone
   iops       = each.value.iops != null ? each.value.iops : (each.value.type == "sbs_15k" ? 15000 : 5000)
   size_in_gb = each.value.size_gb
@@ -16,7 +16,7 @@ resource "scaleway_block_volume" "this" {
     delete = var.timeouts.delete
   }
 
-  tags = local.global_tags
+  tags = each.value.tags
 }
 
 # ==============================================================================
@@ -27,10 +27,10 @@ resource "scaleway_instance_volume" "this" {
   for_each = local.local_volumes
 
   name       = each.value.name
-  project_id = local.project_id
+  project_id = var.project_id
   zone       = var.zone
   type       = each.value.type
   size_in_gb = each.value.size_gb
 
-  tags = local.global_tags
+  tags = each.value.tags
 }

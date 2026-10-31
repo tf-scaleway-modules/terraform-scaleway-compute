@@ -6,10 +6,10 @@ Plan-time `validation` blocks on the module inputs for the global enums and form
 ## Requirements
 
 ### Requirement: Zone validation
-The module SHALL accept only a `zone` of the form `fr-par-N`, `nl-ams-N` or `pl-waw-N` with `N` between 1 and 3.
+When set, `zone` SHALL be of the form `fr-par-N`, `nl-ams-N` or `pl-waw-N` with `N` between 1 and 3; `null` SHALL select the provider default zone.
 
 #### Scenario: Valid zone accepted
-- **WHEN** `zone = "fr-par-1"`
+- **WHEN** `zone = "fr-par-1"` or `zone = null`
 - **THEN** validation passes
 
 #### Scenario: Invalid zone format rejected
@@ -28,7 +28,7 @@ The module SHALL accept only an `instances[*].instance_type` made of uppercase l
 - **THEN** the plan fails with "Instance type must be a valid Scaleway format"
 
 ### Requirement: Root volume type validation
-The module SHALL accept only `l_ssd`, `b_ssd` or `sbs_volume` for `instances[*].root_volume_type`.
+The module SHALL accept only `l_ssd` or `sbs_volume` for `instances[*].root_volume_type`; `b_ssd` is no longer supported by the provider.
 
 #### Scenario: Valid root volume type accepted
 - **WHEN** `root_volume_type = "l_ssd"`
@@ -39,8 +39,8 @@ The module SHALL accept only `l_ssd`, `b_ssd` or `sbs_volume` for `instances[*].
 - **THEN** validation passes
 
 #### Scenario: Invalid root volume type rejected
-- **WHEN** `root_volume_type = "ssd"`
-- **THEN** the plan fails with "Root volume type must be 'l_ssd', 'b_ssd', or 'sbs_volume'."
+- **WHEN** `root_volume_type = "b_ssd"` (no longer supported) or `root_volume_type = "ssd"`
+- **THEN** the plan fails with "Root volume type must be 'l_ssd' or 'sbs_volume'."
 
 ### Requirement: Instance state validation
 The module SHALL accept only `started`, `stopped` or `standby` for `instances[*].state`.
@@ -64,92 +64,6 @@ The module SHALL accept only `l_ssd`, `sbs_5k` or `sbs_15k` for `instances[*].ad
 - **WHEN** `type = "sbs_10k"`
 - **THEN** the plan fails with "Additional volume type must be 'l_ssd', 'sbs_5k', or 'sbs_15k'."
 
-### Requirement: Global rule protocol validation
-The module SHALL accept only `TCP`, `UDP`, `ICMP` or `ANY` for the `protocol` of every entry of the global `inbound_rules` and `outbound_rules`.
-
-#### Scenario: Valid protocol accepted
-- **WHEN** `inbound_rules = [{ protocol = "TCP", port = 22 }]`
-- **THEN** validation passes
-
-#### Scenario: Invalid inbound protocol rejected
-- **WHEN** `inbound_rules = [{ protocol = "HTTP", port = 80 }]`
-- **THEN** the plan fails with "Inbound rule protocol must be 'TCP', 'UDP', 'ICMP', or 'ANY'."
-
-#### Scenario: Invalid outbound protocol rejected
-- **WHEN** `outbound_rules = [{ protocol = "HTTP", port = 80 }]`
-- **THEN** the plan fails with "Outbound rule protocol must be 'TCP', 'UDP', 'ICMP', or 'ANY'."
-
-### Requirement: Global rule CIDR validation
-The module SHALL require the `ip_range` of every entry of the global `inbound_rules` and `outbound_rules` to be a valid IPv4 CIDR block (`a.b.c.d/n` with octets 0-255 and a prefix length 0-32).
-
-#### Scenario: Valid CIDR accepted
-- **WHEN** `ip_range = "10.0.0.0/8"`
-- **THEN** validation passes
-
-#### Scenario: Missing prefix rejected
-- **WHEN** `inbound_rules = [{ protocol = "TCP", port = 22, ip_range = "10.0.0.0" }]`
-- **THEN** the plan fails with "Inbound rule ip_range must be valid CIDR notation"
-
-#### Scenario: Out-of-range CIDR rejected
-- **WHEN** `inbound_rules = [{ protocol = "TCP", port = 22, ip_range = "999.0.0.0/99" }]`
-- **THEN** the plan fails with "Inbound rule ip_range must be valid CIDR notation"
-
-### Requirement: Security group default policy validation
-The module SHALL accept only `accept` or `drop` for `inbound_default_policy` and `outbound_default_policy`.
-
-#### Scenario: Valid policy accepted
-- **WHEN** `inbound_default_policy = "drop"`
-- **THEN** validation passes
-
-#### Scenario: Invalid inbound policy rejected
-- **WHEN** `inbound_default_policy = "deny"`
-- **THEN** the plan fails with "Inbound default policy must be 'accept' or 'drop'."
-
-#### Scenario: Invalid outbound policy rejected
-- **WHEN** `outbound_default_policy = "deny"`
-- **THEN** the plan fails with "Outbound default policy must be 'accept' or 'drop'."
-
-### Requirement: Placement group policy validation
-The module SHALL accept only `low_latency` or `max_availability` for `placement_group_policy_type`, and only `null`, `optional` or `enforced` for `placement_group_policy_mode`.
-
-#### Scenario: Valid policy type accepted
-- **WHEN** `placement_group_policy_type = "max_availability"`
-- **THEN** validation passes
-
-#### Scenario: Invalid policy type rejected
-- **WHEN** `placement_group_policy_type = "high_availability"`
-- **THEN** the plan fails with "Placement group policy type must be 'low_latency' or 'max_availability'."
-
-#### Scenario: Invalid policy mode rejected
-- **WHEN** `placement_group_policy_mode = "strict"`
-- **THEN** the plan fails with "Placement group policy mode must be 'optional' or 'enforced'."
-
-### Requirement: Public IP type validation
-The module SHALL accept only `routed_ipv4`, `routed_ipv6` or `nat` for `public_ip_type`.
-
-#### Scenario: Valid IP type accepted
-- **WHEN** `public_ip_type = "routed_ipv4"`
-- **THEN** validation passes
-
-#### Scenario: Invalid IP type rejected
-- **WHEN** `public_ip_type = "static"`
-- **THEN** the plan fails with "Public IP type must be 'routed_ipv4', 'routed_ipv6', or 'nat'."
-
-### Requirement: Project name validation
-The module SHALL accept only a `project_name` that starts with a lowercase letter, contains lowercase letters, digits and hyphens, ends with a lowercase letter or digit, and is 2 to 63 characters long.
-
-#### Scenario: Valid project name accepted
-- **WHEN** `project_name = "my-project"`
-- **THEN** validation passes
-
-#### Scenario: Uppercase rejected
-- **WHEN** `project_name = "MyProject"`
-- **THEN** the plan fails with "Project name must be lowercase alphanumeric with hyphens"
-
-#### Scenario: Leading digit rejected
-- **WHEN** `project_name = "1project"`
-- **THEN** the plan fails with "Project name must be lowercase alphanumeric with hyphens"
-
 ### Requirement: Instance count range validation
 The module SHALL accept only an `instances[*].count` between 0 and 50 inclusive.
 
@@ -160,59 +74,6 @@ The module SHALL accept only an `instances[*].count` between 0 and 50 inclusive.
 #### Scenario: Count above the limit rejected
 - **WHEN** a group has `count = 51`
 - **THEN** the plan fails with "Instance count per group must be between 0 and 50."
-
-### Requirement: External or custom security group exclusivity
-The module SHALL reject an instance group that sets `security_group_id` together with `inbound_rules` or `outbound_rules`.
-
-#### Scenario: External security group without rules accepted
-- **WHEN** a group sets `security_group_id = "fr-par-1/00000000-0000-0000-0000-000000000001"` and no rules
-- **THEN** validation passes
-
-#### Scenario: Both external ID and rules rejected
-- **WHEN** a group sets `security_group_id` and `inbound_rules = [{ port = 443 }]`
-- **THEN** the plan fails with "Cannot specify both security_group_id and custom inbound_rules/outbound_rules."
-
-### Requirement: Port or port range exclusivity
-The module SHALL reject an entry of the global `inbound_rules` or `outbound_rules` that sets both `port` and `port_range`.
-
-#### Scenario: Port alone accepted
-- **WHEN** `inbound_rules = [{ port = 443 }]`
-- **THEN** validation passes
-
-#### Scenario: Port range alone accepted
-- **WHEN** `inbound_rules = [{ port_range = "8000-8999" }]`
-- **THEN** validation passes
-
-#### Scenario: Both inbound rejected
-- **WHEN** `inbound_rules = [{ port = 443, port_range = "8000-8999" }]`
-- **THEN** the plan fails with "Inbound rule cannot specify both 'port' and 'port_range'"
-
-#### Scenario: Both outbound rejected
-- **WHEN** `outbound_rules = [{ port = 443, port_range = "8000-8999" }]`
-- **THEN** the plan fails with "Outbound rule cannot specify both 'port' and 'port_range'"
-
-### Requirement: Group rule validation
-The module SHALL apply to the `inbound_rules` and `outbound_rules` of every `instances` entry the same rules as to the global ones: `protocol` is `TCP`, `UDP`, `ICMP` or `ANY`; `ip_range` is a valid IPv4 CIDR block; `port` and `port_range` are not both set. It SHALL accept only `accept` or `drop` for a non-null `instances[*].inbound_default_policy` and `instances[*].outbound_default_policy`.
-
-#### Scenario: Valid group rules accepted
-- **WHEN** a group sets `inbound_rules = [{ protocol = "TCP", port = 5432, ip_range = "10.0.0.0/8" }]` and `inbound_default_policy = "drop"`
-- **THEN** validation passes
-
-#### Scenario: Invalid group rule protocol rejected
-- **WHEN** a group sets `inbound_rules = [{ protocol = "HTTP", port = 80 }]`
-- **THEN** the plan fails with "Instance group rule protocol must be 'TCP', 'UDP', 'ICMP', or 'ANY'."
-
-#### Scenario: Invalid group rule CIDR rejected
-- **WHEN** a group sets `outbound_rules = [{ protocol = "TCP", port = 443, ip_range = "999.0.0.0/99" }]`
-- **THEN** the plan fails with "Instance group rule ip_range must be valid CIDR notation"
-
-#### Scenario: Group rule with port and port_range rejected
-- **WHEN** a group sets `inbound_rules = [{ port = 443, port_range = "8000-8999" }]`
-- **THEN** the plan fails with "Instance group rule cannot specify both 'port' and 'port_range'"
-
-#### Scenario: Invalid group default policy rejected
-- **WHEN** a group sets `inbound_default_policy = "deny"` or `outbound_default_policy = "deny"`
-- **THEN** the plan fails with "Instance group default policies must be 'accept' or 'drop'."
 
 ### Requirement: Root volume SBS IOPS validation
 The module SHALL accept `instances[*].root_volume_sbs_iops` only when `root_volume_type` is `sbs_volume`, and only with the value `5000` or `15000`.
@@ -229,13 +90,95 @@ The module SHALL accept `instances[*].root_volume_sbs_iops` only when `root_volu
 - **WHEN** a group sets `root_volume_type = "sbs_volume"` and `root_volume_sbs_iops = 7000`
 - **THEN** the plan fails with "root_volume_sbs_iops must be 5000 or 15000."
 
-### Requirement: SBS root volume and backup snapshot exclusivity
-The module SHALL reject a group that sets both `root_volume_type = "sbs_volume"` and `enable_backup_snapshot = true`, because backup snapshots are Instance snapshots, which only support local volumes.
+### Requirement: Project ID validation
+When set, `project_id` SHALL be a UUID; `null` SHALL select the provider default project.
 
-#### Scenario: SBS root with backup rejected
-- **WHEN** a group sets `root_volume_type = "sbs_volume"` and `enable_backup_snapshot = true`
-- **THEN** the plan fails with "enable_backup_snapshot is not supported with root_volume_type 'sbs_volume': Instance snapshots only support local volumes."
-
-#### Scenario: Local root with backup accepted
-- **WHEN** a group sets `root_volume_type = "l_ssd"` and `enable_backup_snapshot = true`
+#### Scenario: Valid project ID accepted
+- **WHEN** `project_id = "11111110-d164-47ec-8d04-111111111111"` or `project_id = null`
 - **THEN** validation passes
+
+#### Scenario: Malformed project ID rejected
+- **WHEN** `project_id = "my-project"`
+- **THEN** the plan fails with "project_id must be a UUID or null."
+
+### Requirement: Security group rule validation
+For `security_group` and every `instances[*].security_group`, each inbound and outbound rule SHALL have a `protocol` of `TCP`, `UDP`, `ICMP` or `ANY`, an `ip_range` that is a valid IPv4 or IPv6 CIDR, and not both `port` and `port_range`.
+
+#### Scenario: Valid rules accepted
+- **WHEN** a rule is `{ protocol = "TCP", port = 443, ip_range = "10.0.0.0/8" }` or `{ protocol = "ANY", ip_range = "::/0" }`
+- **THEN** validation passes
+
+#### Scenario: Invalid protocol rejected
+- **WHEN** a global or group rule has `protocol = "HTTP"`
+- **THEN** the plan fails with "Security group rule protocol must be 'TCP', 'UDP', 'ICMP', or 'ANY'."
+
+#### Scenario: Invalid CIDR rejected
+- **WHEN** a global or group rule has `ip_range = "10.0.0.0"` or `ip_range = "999.0.0.0/99"`
+- **THEN** the plan fails with "Security group rule ip_range must be a valid IPv4 or IPv6 CIDR"
+
+#### Scenario: Port and port range rejected
+- **WHEN** a global or group rule sets `port = 443` and `port_range = "8000-8999"`
+- **THEN** the plan fails with "Security group rule cannot specify both 'port' and 'port_range'"
+
+### Requirement: Security group policy validation
+When set, the `inbound_default_policy` and `outbound_default_policy` of `security_group` and of every `instances[*].security_group` SHALL be `accept` or `drop`.
+
+#### Scenario: Valid policy accepted
+- **WHEN** `security_group = { inbound_default_policy = "drop" }`
+- **THEN** validation passes
+
+#### Scenario: Invalid policy rejected
+- **WHEN** a global or group policy is `deny`
+- **THEN** the plan fails with "Security group default policies must be 'accept' or 'drop'."
+
+### Requirement: Security group exclusivity
+The module SHALL reject a `security_group` or `instances[*].security_group` that sets `id` together with `inbound_rules` or `outbound_rules`.
+
+#### Scenario: External group without rules accepted
+- **WHEN** a group sets `security_group = { id = "fr-par-1/00000000-0000-0000-0000-000000000001" }`
+- **THEN** validation passes
+
+#### Scenario: ID and rules rejected
+- **WHEN** `security_group = { id = "fr-par-1/00000000-0000-0000-0000-000000000001", inbound_rules = [{ port = 443 }] }`, globally or in a group
+- **THEN** the plan fails with "Cannot specify both security_group.id and custom inbound_rules/outbound_rules. Use one or the other."
+
+### Requirement: Placement group validation
+When `placement_group` is set, `policy_type` SHALL be `low_latency` or `max_availability` and SHALL NOT be combined with `id`.
+
+#### Scenario: Valid placement group accepted
+- **WHEN** `placement_group = { policy_type = "low_latency" }` or `placement_group = { id = "<id>" }`
+- **THEN** validation passes
+
+#### Scenario: Invalid policy type rejected
+- **WHEN** `placement_group = { policy_type = "high_availability" }`
+- **THEN** the plan fails with "placement_group.policy_type must be 'low_latency' or 'max_availability'."
+
+#### Scenario: Existing group with a policy rejected
+- **WHEN** `placement_group = { id = "<id>", policy_type = "low_latency" }`
+- **THEN** the plan fails with "placement_group.policy_type applies only to a created placement group; do not combine it with placement_group.id."
+
+### Requirement: Public IP validation
+`instances[*].public_ip_type` SHALL be `routed_ipv4` or `routed_ipv6`, and `enable_ipv6 = true` SHALL require `create_public_ip = true` and `public_ip_type = "routed_ipv4"`.
+
+#### Scenario: Dual stack accepted
+- **WHEN** a group sets `enable_ipv6 = true` with the defaults for the other IP attributes
+- **THEN** validation passes
+
+#### Scenario: Unknown type rejected
+- **WHEN** a group sets `public_ip_type = "nat"`
+- **THEN** the plan fails with "Public IP type must be 'routed_ipv4' or 'routed_ipv6'."
+
+#### Scenario: IPv6 without an IPv4 primary rejected
+- **WHEN** a group sets `enable_ipv6 = true` and `create_public_ip = false`, or `public_ip_type = "routed_ipv6"`
+- **THEN** the plan fails with "enable_ipv6 requires create_public_ip = true and public_ip_type = 'routed_ipv4'."
+
+### Requirement: Private network limit validation
+`private_networks` and every `instances[*].private_networks` SHALL list at most 8 networks, the maximum an Instance supports.
+
+#### Scenario: Eight networks accepted
+- **WHEN** a group lists eight private network IDs
+- **THEN** validation passes
+
+#### Scenario: Nine networks rejected
+- **WHEN** the global or a group list has nine IDs
+- **THEN** the plan fails with "At most 8 private networks can be attached to an instance."

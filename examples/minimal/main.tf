@@ -5,9 +5,6 @@
 module "compute" {
   source = "../../"
 
-  organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  project_name    = "default"
-
   name = "minimal-example"
 
   instances = {
@@ -17,7 +14,10 @@ module "compute" {
     }
   }
 
-  inbound_rules = [
-    { protocol = "TCP", port = 22 }
-  ]
+  # Closed by default: list every port you need. Restrict SSH to your own range.
+  security_group = {
+    inbound_rules = [
+      { protocol = "TCP", port = 22, ip_range = "203.0.113.0/24" }
+    ]
+  }
 }
