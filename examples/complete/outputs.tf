@@ -8,28 +8,13 @@ output "instances_by_group" {
   value       = module.compute.instances_by_group
 }
 
-output "public_ips" {
-  description = "Public IP addresses"
-  value       = module.compute.public_ips
-}
-
-output "private_ips" {
-  description = "Private IP addresses"
-  value       = module.compute.private_ips
-}
-
 output "shared_security_group_id" {
   description = "Shared security group ID (applies to all instances without custom rules)"
   value       = module.compute.shared_security_group_id
 }
 
-output "group_security_group_ids" {
-  description = "Security group IDs for groups with custom rules"
-  value       = module.compute.group_security_group_ids
-}
-
 output "security_groups" {
-  description = "All security groups (shared + per-group)"
+  description = "Security groups created by the module (shared + per-group)"
   value       = module.compute.security_groups
 }
 
@@ -41,4 +26,9 @@ output "placement_group_id" {
 output "volumes" {
   description = "Additional volumes"
   value       = module.compute.volumes
+}
+
+output "backup_snapshots" {
+  description = "Root volume backup snapshots"
+  value       = module.compute.backup_snapshots
 }

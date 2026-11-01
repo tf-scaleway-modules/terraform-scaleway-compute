@@ -6,7 +6,7 @@ Expansion of instance groups into Scaleway servers: naming, attributes, tags, us
 ## Requirements
 
 ### Requirement: Instance groups expanded to servers
-The module SHALL create one `scaleway_instance_server` per instance of every group, keyed `<group>-<NN>` (two-digit zero-padded index starting at `00`) and named `<name>-<group>-<NN>`, in `zone` and in the resolved project; a group with `count = 0` SHALL create no server.
+The module SHALL create one `scaleway_instance_server` per instance of every group, keyed `<group>-<NN>` (two-digit zero-padded index starting at `00`) and named `<name>-<group>-<NN>`, in `zone` and `project_id` (provider defaults when null); a group with `count = 0` SHALL create no server.
 
 #### Scenario: Group of three
 - **WHEN** `name = "app"` and `instances = { web = { count = 3, instance_type = "DEV1-S" } }`
@@ -58,15 +58,19 @@ The module SHALL send a group's `cloud_init` as the `cloud-init` key of the serv
 - **THEN** the server has no user data
 
 ### Requirement: Backup snapshots
-The module SHALL create one `scaleway_instance_snapshot` of the root volume, named `<server name>-snapshot`, for each server of a group with `enable_backup_snapshot = true`, and none otherwise.
+For each server of a group with `enable_backup_snapshot = true`, the module SHALL snapshot the root volume as `<server name>-snapshot`: a `scaleway_instance_snapshot` for an `l_ssd` root, a `scaleway_block_snapshot` for an `sbs_volume` root; no snapshot otherwise. The `backup_snapshots` output SHALL list them by server key.
 
 #### Scenario: Backup enabled
-- **WHEN** group `db` has `count = 2` and `enable_backup_snapshot = true`
-- **THEN** two snapshots are planned, keyed like the servers
+- **WHEN** group `db` has `count = 2`, `root_volume_type = "l_ssd"` and `enable_backup_snapshot = true`
+- **THEN** two instance snapshots are planned, keyed like the servers
+
+#### Scenario: SBS root backup
+- **WHEN** group `cache` has `root_volume_type = "sbs_volume"` and `enable_backup_snapshot = true`
+- **THEN** one block snapshot per server is planned and no instance snapshot
 
 #### Scenario: Backup disabled
 - **WHEN** no group enables backup
-- **THEN** no snapshot is planned
+- **THEN** no snapshot is planned and `backup_snapshots` is empty
 
 ### Requirement: Server deletion protection
 The module SHALL protect the servers of a group against accidental deletion through the Scaleway API when the group sets `enable_protection = true`, and SHALL leave them unprotected otherwise.

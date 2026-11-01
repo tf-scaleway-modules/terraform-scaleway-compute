@@ -3,11 +3,26 @@
 # ==============================================================================
 
 resource "scaleway_instance_ip" "this" {
-  for_each = local.public_ip_instances
+  for_each = { for k, v in local.instances_flat : k => v if v.create_public_ip }
 
-  project_id = local.project_id
+  project_id = var.project_id
   zone       = var.zone
-  type       = var.public_ip_type
+  type       = each.value.public_ip_type
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = each.value.tags
+}
+
+# Dual stack: a separate resource keeps the address of the existing IPv4 IP.
+resource "scaleway_instance_ip" "ipv6" {
+  for_each = { for k, v in local.instances_flat : k => v if v.enable_ipv6 }
+
+  project_id = var.project_id
+  zone       = var.zone
+  type       = "routed_ipv6"
 
   lifecycle {
     create_before_destroy = true
@@ -17,19 +32,34 @@ resource "scaleway_instance_ip" "this" {
 }
 
 # ==============================================================================
+# Private NICs (one per server and private network)
+# ==============================================================================
+
+resource "scaleway_instance_private_nic" "this" {
+  for_each = local.private_nics
+
+  server_id          = scaleway_instance_server.this[each.value.instance_key].id
+  private_network_id = each.value.private_network_id
+  security_group_id  = each.value.security_group_id
+  zone               = var.zone
+
+  tags = each.value.tags
+}
+
+# ==============================================================================
 # Shared Security Group (applies to all instances by default)
 # ==============================================================================
 
 resource "scaleway_instance_security_group" "shared" {
-  count = var.create_security_group ? 1 : 0
+  count = local.create_shared_security_group ? 1 : 0
 
   name                    = "${var.name}-shared-sg"
   description             = "Shared security group for ${var.name}"
-  project_id              = local.project_id
+  project_id              = var.project_id
   zone                    = var.zone
-  inbound_default_policy  = var.inbound_default_policy
-  outbound_default_policy = var.outbound_default_policy
-  stateful                = var.stateful
+  inbound_default_policy  = var.security_group.inbound_default_policy
+  outbound_default_policy = var.security_group.outbound_default_policy
+  stateful                = var.security_group.stateful
   external_rules          = true
 
   lifecycle {
@@ -40,12 +70,12 @@ resource "scaleway_instance_security_group" "shared" {
 }
 
 resource "scaleway_instance_security_group_rules" "shared" {
-  count = var.create_security_group && (length(var.inbound_rules) > 0 || length(var.outbound_rules) > 0) ? 1 : 0
+  count = local.create_shared_security_group && (length(var.security_group.inbound_rules) > 0 || length(var.security_group.outbound_rules) > 0) ? 1 : 0
 
   security_group_id = scaleway_instance_security_group.shared[0].id
 
   dynamic "inbound_rule" {
-    for_each = var.inbound_rules
+    for_each = var.security_group.inbound_rules
     content {
       action     = inbound_rule.value.action
       protocol   = inbound_rule.value.protocol
@@ -56,7 +86,7 @@ resource "scaleway_instance_security_group_rules" "shared" {
   }
 
   dynamic "outbound_rule" {
-    for_each = var.outbound_rules
+    for_each = var.security_group.outbound_rules
     content {
       action     = outbound_rule.value.action
       protocol   = outbound_rule.value.protocol
@@ -77,7 +107,7 @@ resource "scaleway_instance_security_group" "group" {
 
   name                    = each.value.name
   description             = "Security group for ${var.name} - ${each.key}"
-  project_id              = local.project_id
+  project_id              = var.project_id
   zone                    = var.zone
   inbound_default_policy  = each.value.inbound_default_policy
   outbound_default_policy = each.value.outbound_default_policy
