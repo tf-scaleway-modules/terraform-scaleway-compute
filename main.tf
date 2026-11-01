@@ -6,21 +6,19 @@ resource "scaleway_instance_server" "this" {
   for_each = local.instances_flat
 
   name       = each.value.name
-  project_id = local.project_id
+  project_id = var.project_id
   zone       = var.zone
   type       = each.value.instance_type
   image      = each.value.image
   state      = each.value.state
   protected  = each.value.enable_protection
 
-  ip_id = each.value.create_public_ip ? scaleway_instance_ip.this[each.key].id : null
-
-  # Security group priority: external ID > per-group SG (merged rules) > shared SG
-  security_group_id = (
-    each.value.external_security_group_id != null ? each.value.external_security_group_id :
-    each.value.has_group_security_group ? scaleway_instance_security_group.group[each.value.group_name].id :
-    local.shared_security_group_id
+  ip_ids = concat(
+    each.value.create_public_ip ? [scaleway_instance_ip.this[each.key].id] : [],
+    each.value.enable_ipv6 ? [scaleway_instance_ip.ipv6[each.key].id] : [],
   )
+
+  security_group_id  = local.server_security_group_ids[each.key]
   placement_group_id = each.value.placement_group_id
 
   additional_volume_ids = concat(
@@ -49,13 +47,6 @@ resource "scaleway_instance_server" "this" {
     delete_on_termination = true
   }
 
-  dynamic "private_network" {
-    for_each = each.value.private_networks
-    content {
-      pn_id = private_network.value.id
-    }
-  }
-
   depends_on = [
     scaleway_iam_ssh_key.this,
     scaleway_instance_security_group.shared,
@@ -68,6 +59,9 @@ resource "scaleway_instance_server" "this" {
   ]
 
   lifecycle {
+    # scaleway_instance_private_nic owns the attachments; the server read refills this block.
+    ignore_changes = [private_network]
+
     precondition {
       condition     = length(each.value.external_volume_ids) == 0 || var.instances[each.value.group_name].count <= 1
       error_message = "External volumes can only be used when instance group count is 1. Block volumes cannot be shared across multiple instances."
@@ -84,18 +78,27 @@ resource "scaleway_instance_server" "this" {
 }
 
 # ==============================================================================
-# Instance Snapshots (Backup)
+# Backup Snapshots of the root volume
 # ==============================================================================
 
 resource "scaleway_instance_snapshot" "this" {
-  for_each = { for k, v in local.instances_flat : k => v if v.enable_backup }
+  for_each = local.instance_snapshots
 
   name       = "${each.value.name}-snapshot"
-  project_id = local.project_id
+  project_id = var.project_id
   zone       = var.zone
   volume_id  = scaleway_instance_server.this[each.key].root_volume[0].volume_id
 
-  depends_on = [scaleway_instance_server.this]
+  tags = each.value.tags
+}
+
+resource "scaleway_block_snapshot" "this" {
+  for_each = local.block_snapshots
+
+  name       = "${each.value.name}-snapshot"
+  project_id = var.project_id
+  zone       = var.zone
+  volume_id  = scaleway_instance_server.this[each.key].root_volume[0].volume_id
 
   tags = each.value.tags
 }

@@ -26,25 +26,26 @@ context: |
 
   Project: OpenTofu/Terraform module that creates Scaleway Compute
   infrastructure from one `instances` map of instance groups: servers
-  (count per group, named <name>-<group>-NN), a public IP per server, a shared
-  security group plus optional per-group security groups with merged rules,
-  private network attachment, additional SBS / local volumes and external
-  volumes, an optional placement group, optional backup snapshots and an
-  optional IAM SSH key. The Scaleway project is looked up by name. Published on
+  (count per group, named <name>-<group>-NN), a public IP per server (optionally
+  dual stack), a shared security group plus optional per-group security groups
+  with merged rules, one private NIC per server and network (optionally behind
+  the security group), additional SBS / local volumes and external volumes, an
+  optional placement group, optional backup snapshots (instance or block) and an
+  optional IAM SSH key. Resources go in `project_id` and `zone`, or the
+  provider defaults when null. Published on
   GitLab (leminnov/terraform/modules/scaleway-compute); consumers pin a git tag
   (?ref=vX.Y.Z). Apache-2.0.
 
   Stack: HCL only. required_version >= 1.10.7. Provider pinned with ~> in
-  versions.tf: scaleway/scaleway ~> 2.86. Every tool is pinned in mise.toml.
+  versions.tf: scaleway/scaleway ~> 2.89. Every tool is pinned in mise.toml.
 
   Layout: one .tf file per theme: main.tf (servers, snapshots), network.tf
-  (public IPs, security groups and rules), storage.tf (SBS and local volumes),
-  placement.tf, iam.tf (SSH key), data.tf (project lookup), locals.tf
-  (flattening of groups into servers and volumes, tag and security group
-  resolution). variables.tf is the whole input contract (validation blocks for
-  enums and formats); outputs.tf exposes IDs and addresses. Cross-input
-  rules are resource preconditions in main.tf and iam.tf; checks.tf holds the
-  plan-time `check` warnings for accepted but ignored inputs.
+  (public IPs, private NICs, security groups and rules), storage.tf (SBS and
+  local volumes), placement.tf, iam.tf (SSH key), locals.tf (flattening of
+  groups into servers, NICs and volumes, tag and security group resolution).
+  variables.tf is the whole input contract (validation blocks for enums and
+  formats); outputs.tf exposes IDs and addresses. The only cross-input rule is
+  the external volume precondition in main.tf; there is no data.tf or checks.tf.
   tests/*.tftest.hcl are unit tests with mock_provider "scaleway"
   (conditional_creation, instance_flattening, validations, main); there is no
   integration fixture. examples/minimal and examples/complete are the examples.

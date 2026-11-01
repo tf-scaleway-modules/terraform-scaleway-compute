@@ -6,6 +6,7 @@
 # - Multiple instance groups with different configurations
 # - All instance-level options (volumes, cloud-init, user_data, state, etc.)
 # - SSH key management
+# - Dual stack public IPs and private NIC security groups
 # - Per-group security groups with custom inbound/outbound rules
 # - Placement group for high availability
 # - Multiple private networks
@@ -60,12 +61,11 @@ module "compute" {
   source = "../../"
 
   # ============================================================================
-  # Organization & Project (Required)
+  # Project and zone (optional: the provider defaults apply when null)
   # ============================================================================
 
-  organization_id = "00000000-0000-0000-0000-000000000000"
-  project_name    = "my-project"
-  zone            = "fr-par-1"
+  project_id = "11111110-d164-47ec-8d04-111111111111"
+  zone       = "fr-par-1"
 
   name = "complete-example"
 
@@ -140,6 +140,9 @@ module "compute" {
 
       tags = ["frontend", "web", "tier:presentation"]
 
+      # One routed IPv6 public IP per server next to the routed IPv4 one
+      enable_ipv6 = true
+
       cloud_init = <<-EOF
         #cloud-config
         package_update: true
@@ -190,11 +193,11 @@ module "compute" {
       # Database instances connect to BOTH networks (main + data)
       # This demonstrates multiple private network attachment
       private_networks = [
-        { id = scaleway_vpc_private_network.main.id },
-        { id = scaleway_vpc_private_network.data.id },
+        scaleway_vpc_private_network.main.id,
+        scaleway_vpc_private_network.data.id,
       ]
 
-      # Enable backup snapshots for data protection
+      # Enable backup snapshots for data protection (instance snapshot of the l_ssd root)
       enable_backup_snapshot = true
 
       cloud_init = <<-EOF
@@ -223,9 +226,10 @@ module "compute" {
       root_volume_size_gb = 20
       state               = "started"
 
-      # SBS root volume with 15000 IOPS (no backup snapshot: Instance snapshots need a local volume)
-      root_volume_type     = "sbs_volume"
-      root_volume_sbs_iops = 15000
+      # SBS root volume with 15000 IOPS, backed up with a block snapshot
+      root_volume_type       = "sbs_volume"
+      root_volume_sbs_iops   = 15000
+      enable_backup_snapshot = true
 
       tags = ["cache", "redis", "tier:caching"]
 
@@ -249,17 +253,17 @@ module "compute" {
       create_public_ip = false
 
       # Cache connects to data network alongside databases
-      private_networks = [
-        { id = scaleway_vpc_private_network.data.id },
-      ]
+      private_networks = [scaleway_vpc_private_network.data.id]
 
       # Per-group security group configuration (overrides global defaults)
       # Cache servers only need Redis port from private network
-      inbound_rules = [
-        { protocol = "TCP", port = 6379, ip_range = "10.0.0.0/8" }, # Redis
-        { protocol = "TCP", port = 22, ip_range = "11.0.0.0/8" },   # SSH
-        { protocol = "ICMP", ip_range = "10.0.0.0/8" },             # Ping
-      ]
+      security_group = {
+        inbound_rules = [
+          { protocol = "TCP", port = 6379, ip_range = "10.0.0.0/8" }, # Redis
+          { protocol = "TCP", port = 22, ip_range = "11.0.0.0/8" },   # SSH
+          { protocol = "ICMP", ip_range = "10.0.0.0/8" },             # Ping
+        ]
+      }
     }
 
     # --------------------------------------------------------------------------
@@ -329,9 +333,7 @@ module "compute" {
       create_public_ip = false
 
       # Workers connect to data network for job processing
-      private_networks = [
-        { id = scaleway_vpc_private_network.data.id },
-      ]
+      private_networks = [scaleway_vpc_private_network.data.id]
     }
 
     # --------------------------------------------------------------------------
@@ -366,18 +368,22 @@ module "compute" {
 
       create_public_ip = false
 
-      private_networks = [
-        { id = scaleway_vpc_private_network.data.id },
-      ]
+      private_networks = [scaleway_vpc_private_network.data.id]
+
+      # Filter the private NICs with the group security group. With the default
+      # inbound policy (drop) only the rules below reach the private network.
+      enable_private_nic_security_group = true
 
       # Per-group security group for NFS storage
-      inbound_rules = [
-        { protocol = "TCP", port = 2049, ip_range = "10.0.0.0/8" }, # NFS
-        { protocol = "UDP", port = 2049, ip_range = "10.0.0.0/8" }, # NFS UDP
-        { protocol = "TCP", port = 111, ip_range = "10.0.0.0/8" },  # RPC
-        { protocol = "UDP", port = 111, ip_range = "10.0.0.0/8" },  # RPC UDP
-        { protocol = "TCP", port = 22, ip_range = "11.0.0.0/8" },   # SSH
-      ]
+      security_group = {
+        inbound_rules = [
+          { protocol = "TCP", port = 2049, ip_range = "10.0.0.0/8" }, # NFS
+          { protocol = "UDP", port = 2049, ip_range = "10.0.0.0/8" }, # NFS UDP
+          { protocol = "TCP", port = 111, ip_range = "10.0.0.0/8" },  # RPC
+          { protocol = "UDP", port = 111, ip_range = "10.0.0.0/8" },  # RPC UDP
+          { protocol = "TCP", port = 22, ip_range = "11.0.0.0/8" },   # SSH
+        ]
+      }
     }
   }
 
@@ -387,11 +393,7 @@ module "compute" {
 
   # The IAM SSH key is scoped to the Project and copied to every Instance of the
   # Project at boot, not only to the instances of this module.
-  create_ssh_key      = true
-  ssh_public_key_file = "~/.ssh/id_ed25519.pub"
-
-  # Alternative: provide key content directly (uncomment to use)
-  # ssh_public_key = "ssh-ed25519 AAAA... user@host"
+  ssh_public_key = var.ssh_public_key
 
   # ============================================================================
   # Security Group Configuration
@@ -400,11 +402,11 @@ module "compute" {
   # Two-tier security group architecture:
   #
   # 1. SHARED SECURITY GROUP (default-shared-sg):
-  #    - Contains the global inbound_rules/outbound_rules defined below
+  #    - Contains the global security_group rules defined below
   #    - Applies to ALL instances that don't have custom rules
   #
   # 2. PER-GROUP SECURITY GROUPS (default-{group}-sg):
-  #    - Created only when a group specifies custom inbound_rules or outbound_rules
+  #    - Created only when a group specifies security_group rules
   #    - Contains MERGED rules: global rules + group-specific rules
   #    - See 'cache' and 'storage' groups above for examples
   #
@@ -413,123 +415,126 @@ module "compute" {
   #   - storage group → gets 'default-storage-sg' with global + NFS rules
   #   - other groups (backend, frontend, etc.) → use 'default-shared-sg'
 
-  create_security_group = true # Enable security group creation
+  security_group = {
+    # Default policies (these are the defaults)
+    inbound_default_policy  = "drop"   # Deny all inbound by default
+    outbound_default_policy = "accept" # Allow all outbound by default
+    stateful                = true     # Track connection state
 
-  # Default policies
-  inbound_default_policy  = "drop"   # Deny all inbound by default
-  outbound_default_policy = "accept" # Allow all outbound by default
-  stateful                = true     # Track connection state
+    # Global inbound rules (apply to shared SG + merged into per-group SGs)
+    inbound_rules = [
+      # SSH access from private network only
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 22
+        ip_range = "10.0.0.0/8"
+      },
+      # HTTP/HTTPS from anywhere
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 80
+        ip_range = "0.0.0.0/0"
+      },
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 443
+        ip_range = "0.0.0.0/0"
+      },
+      # HTTPS over IPv6 for the dual stack frontend (0.0.0.0/0 does not match IPv6)
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 443
+        ip_range = "::/0"
+      },
+      # API port range for backend services
+      {
+        action     = "accept"
+        protocol   = "TCP"
+        port_range = "8000-8999"
+        ip_range   = "10.0.0.0/8"
+      },
+      # PostgreSQL from private network
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 5432
+        ip_range = "10.0.0.0/8"
+      },
+      # Redis from private network
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 6379
+        ip_range = "10.0.0.0/8"
+      },
+      # Health check endpoint
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 8080
+        ip_range = "0.0.0.0/0"
+      },
+      # ICMP ping from private network
+      {
+        action   = "accept"
+        protocol = "ICMP"
+        ip_range = "10.0.0.0/8"
+      },
+    ]
 
-  # Global inbound rules (apply to shared SG + merged into per-group SGs)
-  inbound_rules = [
-    # SSH access from private network only
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 22
-      ip_range = "10.0.0.0/8"
-    },
-    # HTTP/HTTPS from anywhere
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 80
-      ip_range = "0.0.0.0/0"
-    },
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 443
-      ip_range = "0.0.0.0/0"
-    },
-    # API port range for backend services
-    {
-      action     = "accept"
-      protocol   = "TCP"
-      port_range = "8000-8999"
-      ip_range   = "10.0.0.0/8"
-    },
-    # PostgreSQL from private network
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 5432
-      ip_range = "10.0.0.0/8"
-    },
-    # Redis from private network
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 6379
-      ip_range = "10.0.0.0/8"
-    },
-    # Health check endpoint
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 8080
-      ip_range = "0.0.0.0/0"
-    },
-    # ICMP ping from private network
-    {
-      action   = "accept"
-      protocol = "ICMP"
-      ip_range = "10.0.0.0/8"
-    },
-  ]
-
-  # Outbound rules (optional - outbound is allowed by default)
-  outbound_rules = [
-    # Allow HTTPS outbound for package updates
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 443
-      ip_range = "0.0.0.0/0"
-    },
-    # Allow HTTP outbound
-    {
-      action   = "accept"
-      protocol = "TCP"
-      port     = 80
-      ip_range = "0.0.0.0/0"
-    },
-    # Allow DNS
-    {
-      action   = "accept"
-      protocol = "UDP"
-      port     = 53
-      ip_range = "0.0.0.0/0"
-    },
-    # Allow NTP
-    {
-      action   = "accept"
-      protocol = "UDP"
-      port     = 123
-      ip_range = "0.0.0.0/0"
-    },
-  ]
+    # Outbound rules (optional - outbound is allowed by default)
+    outbound_rules = [
+      # Allow HTTPS outbound for package updates
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 443
+        ip_range = "0.0.0.0/0"
+      },
+      # Allow HTTP outbound
+      {
+        action   = "accept"
+        protocol = "TCP"
+        port     = 80
+        ip_range = "0.0.0.0/0"
+      },
+      # Allow DNS
+      {
+        action   = "accept"
+        protocol = "UDP"
+        port     = 53
+        ip_range = "0.0.0.0/0"
+      },
+      # Allow NTP
+      {
+        action   = "accept"
+        protocol = "UDP"
+        port     = 123
+        ip_range = "0.0.0.0/0"
+      },
+    ]
+  }
 
   # ============================================================================
   # Placement Group Configuration
   # ============================================================================
 
-  create_placement_group = true
-
-  # Policy types:
-  # - max_availability: Spread instances across different hypervisors (HA)
+  # null = none, {} = create one, { id = "..." } = reuse an existing one.
+  # policy_type (created groups only):
+  # - max_availability: Spread instances across different hypervisors (HA, default)
   # - low_latency: Place instances close together (performance)
-  placement_group_policy_type = "max_availability"
+  placement_group = {
+    policy_type = "max_availability"
+  }
 
   # ============================================================================
   # Network Configuration
   # ============================================================================
 
   # Default private networks for all instances (supports multiple)
-  private_networks = [
-    { id = scaleway_vpc_private_network.main.id },
-  ]
-
-  # Public IP type: routed_ipv4, routed_ipv6, or nat
-  public_ip_type = "routed_ipv4"
+  private_networks = [scaleway_vpc_private_network.main.id]
 }

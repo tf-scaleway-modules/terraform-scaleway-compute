@@ -3,13 +3,12 @@
 # ==============================================================================
 
 resource "scaleway_instance_placement_group" "this" {
-  count = var.create_placement_group ? 1 : 0
+  count = local.create_placement_group ? 1 : 0
 
   name        = "${var.name}-pg"
-  project_id  = local.project_id
+  project_id  = var.project_id
   zone        = var.zone
-  policy_type = var.placement_group_policy_type
-  policy_mode = var.placement_group_policy_mode
+  policy_type = coalesce(var.placement_group.policy_type, "max_availability")
 
   tags = local.global_tags
 }
