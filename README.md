@@ -331,7 +331,7 @@ module "compute" {
 }
 ```
 
-Timeouts apply to instances (create, update, delete) and SBS block volumes (create, delete). Public IPs, private NICs, security groups, local volumes, snapshots (instance and block), the placement group and the SSH key keep the provider defaults.
+Timeouts apply to instances (create, update, delete). SBS block volumes (the provider no longer accepts timeouts on them since 2.92), public IPs, private NICs, security groups, local volumes, snapshots (instance and block), the placement group and the SSH key keep the provider defaults.
 
 ## Lifecycle Protection
 

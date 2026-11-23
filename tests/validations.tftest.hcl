@@ -111,6 +111,18 @@ run "instances_rejects_count_above_50" {
   expect_failures = [var.instances]
 }
 
+run "instances_accepts_multi_segment_instance_types" {
+  command = plan
+
+  variables {
+    instances = {
+      basic = { count = 1, instance_type = "BASIC2-A12C-48G" }
+      pop   = { count = 1, instance_type = "POP2-HM-2C-16G" }
+      win   = { count = 1, instance_type = "POP2-2C-8G-WIN" }
+    }
+  }
+}
+
 run "instances_rejects_invalid_instance_type" {
   command = plan
 

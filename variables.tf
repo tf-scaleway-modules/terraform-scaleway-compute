@@ -74,9 +74,9 @@ variable "instances" {
 
   validation {
     condition = alltrue([
-      for k, v in var.instances : can(regex("^[A-Z]+[0-9]+-[A-Z0-9]+$", v.instance_type))
+      for k, v in var.instances : can(regex("^[A-Z]+[0-9]*(-[A-Z0-9]+)+$", v.instance_type))
     ])
-    error_message = "Instance type must be a valid Scaleway format (e.g., DEV1-S, GP1-M, PRO2-XXS)."
+    error_message = "Instance type must be a valid Scaleway format (e.g., DEV1-S, PRO2-XXS, BASIC2-A12C-48G, POP2-HM-2C-16G)."
   }
 
   validation {
