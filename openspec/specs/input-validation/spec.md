@@ -17,10 +17,14 @@ When set, `zone` SHALL be of the form `fr-par-N`, `nl-ams-N` or `pl-waw-N` with 
 - **THEN** the plan fails with "Zone must be a valid Scaleway zone"
 
 ### Requirement: Instance type format validation
-The module SHALL accept only an `instances[*].instance_type` made of uppercase letters, digits, a hyphen and an uppercase alphanumeric suffix (e.g. `DEV1-S`, `GP1-M`, `PRO2-XXS`).
+The module SHALL accept only an `instances[*].instance_type` made of an uppercase family name with an optional generation number, followed by one or more hyphen-separated uppercase alphanumeric segments (e.g. `DEV1-S`, `PRO2-XXS`, `BASIC2-A12C-48G`, `POP2-HM-2C-16G`, `POP2-2C-8G-WIN`).
 
 #### Scenario: Valid instance type accepted
 - **WHEN** `instance_type = "DEV1-S"`
+- **THEN** validation passes
+
+#### Scenario: Multi-segment instance type accepted
+- **WHEN** `instance_type = "BASIC2-A12C-48G"` or `instance_type = "POP2-HM-2C-16G"`
 - **THEN** validation passes
 
 #### Scenario: Invalid instance type rejected
