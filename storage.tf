@@ -10,13 +10,7 @@ resource "scaleway_block_volume" "this" {
   zone       = var.zone
   iops       = each.value.iops != null ? each.value.iops : (each.value.type == "sbs_15k" ? 15000 : 5000)
   size_in_gb = each.value.size_gb
-
-  timeouts {
-    create = var.timeouts.create
-    delete = var.timeouts.delete
-  }
-
-  tags = each.value.tags
+  tags       = each.value.tags
 }
 
 # ==============================================================================
