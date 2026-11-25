@@ -279,7 +279,7 @@ No modules.
 | <a name="input_security_group"></a> [security\_group](#input\_security\_group) | Shared security group. With id set, that existing group is used and nothing is created (rules cannot be combined with id); otherwise one is created. Inbound traffic is dropped unless inbound\_rules allow it: the default has no rule, so add SSH explicitly. | <pre>object({<br/>    id                      = optional(string)<br/>    inbound_default_policy  = optional(string, "drop")<br/>    outbound_default_policy = optional(string, "accept")<br/>    stateful                = optional(bool, true)<br/>    inbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })), [])<br/>    outbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })), [])<br/>  })</pre> | `{}` | no |
 | <a name="input_ssh_public_key"></a> [ssh\_public\_key](#input\_ssh\_public\_key) | SSH public key content (e.g. file("~/.ssh/id\_ed25519.pub")); the IAM SSH key is created when set. A public key is not a secret: it is sensitive only to keep it out of plan output, is not ephemeral because scaleway\_iam\_ssh\_key has no write-only argument, and is stored in state. Scaleway scopes the key to the Project and copies it to every Instance of the Project at boot. | `string` | `null` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Global tags applied to all resources. | `list(string)` | `[]` | no |
-| <a name="input_timeouts"></a> [timeouts](#input\_timeouts) | Resource operation timeouts for create, update, and delete operations. | <pre>object({<br/>    create = optional(string, "10m")<br/>    update = optional(string, "10m")<br/>    delete = optional(string, "10m")<br/>  })</pre> | `{}` | no |
+| <a name="input_timeouts"></a> [timeouts](#input\_timeouts) | Create, update and delete timeouts for the instances. Other resources keep the provider defaults. | <pre>object({<br/>    create = optional(string, "10m")<br/>    update = optional(string, "10m")<br/>    delete = optional(string, "10m")<br/>  })</pre> | `{}` | no |
 | <a name="input_zone"></a> [zone](#input\_zone) | Scaleway zone (e.g., fr-par-1, nl-ams-1). Null uses the provider default zone. | `string` | `null` | no |
 
 ## Outputs
@@ -331,7 +331,7 @@ module "compute" {
 }
 ```
 
-Timeouts apply to instances (create, update, delete) and SBS block volumes (create, delete). Public IPs, private NICs, security groups, local volumes, snapshots (instance and block), the placement group and the SSH key keep the provider defaults.
+Timeouts apply to instances (create, update, delete) only. SBS block volumes, public IPs, private NICs, security groups, local volumes, snapshots (instance and block), the placement group and the SSH key keep the provider defaults: since provider 2.92.0, `scaleway_block_volume` accepts no `timeouts`.
 
 ## Lifecycle Protection
 

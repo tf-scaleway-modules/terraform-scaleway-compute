@@ -130,6 +130,37 @@ run "sbs_volume_routes_to_block_volume_resource" {
   }
 }
 
+# Provider >= 2.92.0 rejects a timeouts block on scaleway_block_volume, so the
+# timeouts input reaches the servers only.
+run "timeouts_apply_to_servers_not_block_volumes" {
+  command = plan
+
+  variables {
+    timeouts = { create = "15m", delete = "20m" }
+    instances = {
+      db = {
+        count              = 1
+        instance_type      = "DEV1-S"
+        additional_volumes = [{ size_gb = 100, type = "sbs_5k" }]
+      }
+    }
+  }
+
+  assert {
+    condition     = length(scaleway_block_volume.this) == 1
+    error_message = "An sbs_5k volume should still create one scaleway_block_volume."
+  }
+
+  assert {
+    condition = (
+      scaleway_instance_server.this["db-00"].timeouts.create == "15m" &&
+      scaleway_instance_server.this["db-00"].timeouts.update == "10m" &&
+      scaleway_instance_server.this["db-00"].timeouts.delete == "20m"
+    )
+    error_message = "timeouts should set create/update/delete on the servers, with update keeping its 10m default."
+  }
+}
+
 run "local_volume_routes_to_instance_volume_resource" {
   command = plan
 

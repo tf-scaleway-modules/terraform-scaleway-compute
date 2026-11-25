@@ -341,7 +341,7 @@ variable "private_networks" {
 # ==============================================================================
 
 variable "timeouts" {
-  description = "Resource operation timeouts for create, update, and delete operations."
+  description = "Create, update and delete timeouts for the instances. Other resources keep the provider defaults."
   type = object({
     create = optional(string, "10m")
     update = optional(string, "10m")

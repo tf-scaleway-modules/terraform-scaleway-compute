@@ -1,7 +1,7 @@
 # resource-timeouts Specification
 
 ## Purpose
-The `timeouts` input that sets create, update and delete timeouts on instances and, for create and delete, on SBS block volumes.
+The `timeouts` input that sets create, update and delete timeouts on instances.
 
 ## Requirements
 
@@ -27,15 +27,8 @@ The module SHALL apply `timeouts.create`, `timeouts.update` and `timeouts.delete
 - **WHEN** `timeouts = { create = "20m", delete = "15m" }`
 - **THEN** each server has create `"20m"`, update `"10m"` and delete `"15m"`
 
-### Requirement: Block volume timeouts
-The module SHALL apply `timeouts.create` and `timeouts.delete` to every `scaleway_block_volume`; `timeouts.update` SHALL NOT be applied to block volumes.
-
-#### Scenario: Block volume create timeout
-- **WHEN** `timeouts = { create = "15m" }` and an instance has an `sbs_5k` additional volume
-- **THEN** the block volume has create timeout `"15m"` and delete timeout `"10m"`
-
 ### Requirement: Timeouts scope
-The `timeouts` input SHALL apply only to `scaleway_instance_server` (create, update, delete) and `scaleway_block_volume` (create, delete). Public IPs, private NICs, security groups, security group rules, local volumes, snapshots (instance and block), the placement group and the SSH key SHALL keep the provider defaults, and the README SHALL say so.
+The `timeouts` input SHALL apply only to `scaleway_instance_server` (create, update, delete). SBS block volumes (`scaleway_block_volume` accepts no `timeouts` since provider 2.92.0), public IPs, private NICs, security groups, security group rules, local volumes, snapshots (instance and block), the placement group and the SSH key SHALL keep the provider defaults, and the README SHALL say so.
 
 #### Scenario: Security group timeouts
 - **WHEN** `timeouts = { create = "20m" }`
@@ -44,3 +37,7 @@ The `timeouts` input SHALL apply only to `scaleway_instance_server` (create, upd
 #### Scenario: Private NIC timeouts
 - **WHEN** `timeouts = { create = "20m" }`
 - **THEN** private NICs have no module-set timeout
+
+#### Scenario: Block volume timeouts
+- **WHEN** `timeouts = { create = "15m" }` and an instance has an `sbs_5k` additional volume
+- **THEN** the server has create timeout `"15m"` and the block volume has no module-set timeout
