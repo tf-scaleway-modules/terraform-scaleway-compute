@@ -1,7 +1,7 @@
 # AGENTS.md — terraform-modules-scaleway-compute
 
 ## Project
-OpenTofu/Terraform module: Scaleway Compute instance groups with their security groups, volumes, public IPs, placement group and SSH key. Published on GitLab at leminnov/terraform/modules/scaleway-compute;
+OpenTofu (>= 1.11.0) and Terraform (>= 1.11.0) module: Scaleway Compute instance groups with their security groups, volumes, public IPs, placement group and SSH key. Published on GitLab at leminnov/terraform/modules/scaleway-compute;
 consumers pin a git tag. Planning uses OpenSpec (`openspec/`). Engineering
 standards live in the `quality`, `repository` and `terraform` OpenSpec stores, the single
 source of truth; this file only routes to them.
@@ -69,7 +69,7 @@ Never deviate silently: add a `# DEVIATION(<spec-id>): <reason>` comment and lis
 in your summary.
 
 ## Commands
-- Format / validate: `tofu fmt -recursive`, `tofu init -backend=false && tofu validate`, `tflint --recursive`
+- Format / validate: `tofu fmt -recursive`, `tofu init -backend=false && tofu validate`, `terraform init -backend=false && terraform validate`, `tflint --recursive`
 - Tests: `tofu test` (unit, mocked provider, no credentials)
 - Everything incl. README regeneration: `pre-commit run -a`; changelog: `mise run changelog`
 - Specs: `mise run spec-validate`; standards stores: `mise run spec-setup`

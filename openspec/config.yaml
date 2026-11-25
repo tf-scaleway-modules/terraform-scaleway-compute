@@ -17,7 +17,7 @@ references:
     ref: v4.1.0
   - id: terraform
     remote: https://gitlab.com/leminnov/agentic-coding/openspec/terraform.git
-    ref: v1.2.6
+    ref: v2.1.0
 
 context: |
   Quality mandate: every artifact applies the non-negotiables of AGENTS.md
@@ -36,8 +36,8 @@ context: |
   GitLab (leminnov/terraform/modules/scaleway-compute); consumers pin a git tag
   (?ref=vX.Y.Z). Apache-2.0.
 
-  Stack: HCL only. required_version >= 1.10.7. Provider pinned with ~> in
-  versions.tf: scaleway/scaleway ~> 2.89. Every tool is pinned in mise.toml.
+  Stack: HCL only. required_version >= 1.11.0 (OpenTofu and Terraform). Provider pinned with ~> in
+  versions.tf: scaleway/scaleway ~> 2.93. Every tool is pinned in mise.toml.
 
   Layout: one .tf file per theme: main.tf (servers, snapshots), network.tf
   (public IPs, private NICs, security groups and rules), storage.tf (SBS and
@@ -59,7 +59,8 @@ context: |
   commit subjects (mise run changelog, .cliff.toml), never edited by hand, so
   commit subjects read as CHANGELOG lines; semver tags.
 
-  Commands: tofu fmt -recursive; tofu init -backend=false && tofu validate;
+  Commands: tofu fmt -recursive; tofu init -backend=false && tofu validate
+  (and terraform init -backend=false && terraform validate);
   tflint --recursive; tofu test; pre-commit run -a; mise run changelog;
   mise run spec-validate.
 

@@ -8,20 +8,30 @@
 
 mock_provider "scaleway" {
   mock_resource "scaleway_block_volume" {
-    defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000001" }
+    defaults = {
+      id  = "fr-par-1/00000000-0000-0000-0000-000000000001"
+      srn = "srn:scaleway:block:fr-par-1:project/p:volume/00000000-0000-0000-0000-000000000001"
+    }
   }
   mock_resource "scaleway_instance_volume" {
-    defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000002" }
+    defaults = {
+      id  = "fr-par-1/00000000-0000-0000-0000-000000000002"
+      srn = "srn:scaleway:instance:fr-par-1:project/p:volume/00000000-0000-0000-0000-000000000002"
+    }
   }
   mock_resource "scaleway_instance_ip" {
     defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000003" }
   }
   mock_resource "scaleway_instance_security_group" {
-    defaults = { id = "fr-par-1/00000000-0000-0000-0000-000000000004" }
+    defaults = {
+      id  = "fr-par-1/00000000-0000-0000-0000-000000000004"
+      srn = "srn:scaleway:instance:fr-par-1:project/p:security-group/00000000-0000-0000-0000-000000000004"
+    }
   }
   mock_resource "scaleway_instance_server" {
     defaults = {
       id          = "fr-par-1/00000000-0000-0000-0000-000000000010"
+      srn         = "srn:scaleway:instance:fr-par-1:project/p:server/00000000-0000-0000-0000-000000000010"
       root_volume = { volume_id = "fr-par-1/00000000-0000-0000-0000-000000000011" }
     }
   }
@@ -190,8 +200,18 @@ run "instances_output_lists_addresses" {
   }
 
   assert {
+    condition     = output.instances["web-00"].srn == scaleway_instance_server.this["web-00"].srn && output.instances_by_group["web"]["web-00"].srn == scaleway_instance_server.this["web-00"].srn
+    error_message = "instances and instances_by_group should expose the server srn."
+  }
+
+  assert {
     condition     = output.backup_snapshots["web-00"].type == "instance"
     error_message = "backup_snapshots should list the instance snapshot with its type."
+  }
+
+  assert {
+    condition     = output.backup_snapshots["web-00"].srn == scaleway_instance_snapshot.this["web-00"].srn
+    error_message = "backup_snapshots should expose the snapshot srn."
   }
 }
 
@@ -224,6 +244,11 @@ run "volumes_output_merges_local_and_sbs" {
     condition     = output.volumes["db-00-vol-00"].type == "local" && output.volumes["db-00-vol-01"].type == "sbs"
     error_message = "volumes should merge local and SBS volumes with their type."
   }
+
+  assert {
+    condition     = output.volumes["db-00-vol-00"].srn == scaleway_instance_volume.this["db-00-vol-00"].srn && output.volumes["db-00-vol-01"].srn == scaleway_block_volume.this["db-00-vol-01"].srn
+    error_message = "volumes should expose the srn of local and SBS volumes."
+  }
 }
 
 run "sbs_root_block_snapshot_in_output" {
@@ -238,5 +263,25 @@ run "sbs_root_block_snapshot_in_output" {
   assert {
     condition     = output.backup_snapshots["cache-00"].type == "block"
     error_message = "An SBS root snapshot should be typed 'block'."
+  }
+
+  assert {
+    condition     = output.backup_snapshots["cache-00"].srn == scaleway_block_snapshot.this["cache-00"].srn
+    error_message = "backup_snapshots should expose the block snapshot srn."
+  }
+}
+
+run "security_groups_output_exposes_srn" {
+  command = apply
+
+  variables {
+    instances = {
+      db = { count = 1, instance_type = "DEV1-S", security_group = { inbound_rules = [{ port = 5432, ip_range = "10.0.0.0/8" }] } }
+    }
+  }
+
+  assert {
+    condition     = output.security_groups["shared"].srn == scaleway_instance_security_group.shared[0].srn && output.security_groups["db"].srn == scaleway_instance_security_group.group["db"].srn
+    error_message = "security_groups should expose the srn of the shared and per-group groups."
   }
 }
