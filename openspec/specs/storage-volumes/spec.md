@@ -42,8 +42,8 @@ The module SHALL attach the volumes listed in a group's `external_volume_ids` to
 - **THEN** the server has that volume among its additional volumes and the module creates no volume for it
 
 ### Requirement: Volume outputs
-The module SHALL output `volumes` as a map of volume key `<server key>-vol-<NN>` to `{ id, name, type }` for every additional volume the module creates, with `type` equal to `local` or `sbs`.
+The module SHALL output `volumes` as a map of volume key `<server key>-vol-<NN>` to `{ id, name, type, srn }` for every additional volume the module creates, with `type` equal to `local` or `sbs`.
 
 #### Scenario: Mixed volumes
 - **WHEN** a server has one `l_ssd` and one `sbs_5k` volume
-- **THEN** `volumes` has one entry of type `local` and one of type `sbs`
+- **THEN** `volumes` has one entry of type `local` and one of type `sbs`, each with an `srn`
