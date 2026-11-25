@@ -2,7 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## [3.0.1] - 2026-11-25
+## [4.0.0] - 2026-11-25
+- Require OpenTofu or Terraform 1.11.0, validate with both and expose srn in the outputs
+
+Raise required_version to >= 1.11.0 and the scaleway provider to ~> 2.93, add
+srn to the instances, instances_by_group, security_groups, volumes and
+backup_snapshots outputs, pin OpenTofu 1.13.10 and Terraform 1.17.2 in mise,
+add a Terraform validation job to the GitLab release pipeline, bump the GitHub
+workflows to OpenTofu 1.13.10 and run the pre-commit Terraform hooks with tofu.
+
+BREAKING: required_version moves from >= 1.10.7 to >= 1.11.0 and the scaleway
+provider from ~> 2.89 to ~> 2.93. Consumers need OpenTofu or Terraform >= 1.11.0
+and scaleway provider >= 2.93 (run tofu init -upgrade).
 - Fix validation with provider 2.92.0+ by dropping the timeouts block from SBS block volumes
 
 Provider 2.92.0 moved scaleway_block_volume to the plugin framework and removed its timeouts block, so any fresh init (~> 2.89 resolves to 2.93) failed tofu validate. The timeouts input now applies to instances only; block volumes keep the provider defaults.

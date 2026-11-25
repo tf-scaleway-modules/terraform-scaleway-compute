@@ -180,6 +180,14 @@ v2 attached networks with the inline `private_network` block of the server; v3 c
 
 Rolling back to v2: pin the previous tag after destroying the v3-only resources (IPv6 IPs, block snapshots and NICs created by v3).
 
+## Upgrading from v3 to v4
+
+v4.0.0 is a major release that raises the tool and provider floors; no input changes and no resource is replaced.
+
+- OpenTofu or Terraform `>= 1.11.0` is required (v3 accepted `>= 1.10.7`); both are validated in CI.
+- The scaleway provider must be `~> 2.93`: run `tofu init -upgrade` (or `terraform init -upgrade`) when your lock file pins an older version.
+- The `instances`, `instances_by_group`, `security_groups`, `volumes` and `backup_snapshots` outputs gain an `srn` attribute (Scaleway Resource Name, for example to reference a resource in an IAM policy). Existing attributes are unchanged.
+
 ## Security Group Architecture
 
 This module uses a **two-tier security group architecture**:
@@ -235,14 +243,14 @@ module.compute.security_groups
 
 | Name | Version |
 | ---- | ------- |
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10.7 |
-| <a name="requirement_scaleway"></a> [scaleway](#requirement\_scaleway) | ~> 2.89 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11.0 |
+| <a name="requirement_scaleway"></a> [scaleway](#requirement\_scaleway) | ~> 2.93 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_scaleway"></a> [scaleway](#provider\_scaleway) | ~> 2.89 |
+| <a name="provider_scaleway"></a> [scaleway](#provider\_scaleway) | ~> 2.93 |
 
 ## Modules
 
@@ -286,14 +294,14 @@ No modules.
 
 | Name | Description |
 | ---- | ----------- |
-| <a name="output_backup_snapshots"></a> [backup\_snapshots](#output\_backup\_snapshots) | Root volume backup snapshots keyed by instance key with id, name and type ('instance' for l\_ssd roots, 'block' for sbs\_volume roots). |
-| <a name="output_instances"></a> [instances](#output\_instances) | Map of all instances keyed by '<group>-<NN>' with id, name, type, state, zone, public\_ips and private\_ips (lists of addresses). |
-| <a name="output_instances_by_group"></a> [instances\_by\_group](#output\_instances\_by\_group) | Instances grouped by their instance group name, each with id, name, public\_ips and private\_ips. |
+| <a name="output_backup_snapshots"></a> [backup\_snapshots](#output\_backup\_snapshots) | Root volume backup snapshots keyed by instance key with id, name, srn and type ('instance' for l\_ssd roots, 'block' for sbs\_volume roots). |
+| <a name="output_instances"></a> [instances](#output\_instances) | Map of all instances keyed by '<group>-<NN>' with id, name, type, state, zone, srn, public\_ips and private\_ips (lists of addresses). |
+| <a name="output_instances_by_group"></a> [instances\_by\_group](#output\_instances\_by\_group) | Instances grouped by their instance group name, each with id, name, srn, public\_ips and private\_ips. |
 | <a name="output_placement_group_id"></a> [placement\_group\_id](#output\_placement\_group\_id) | ID of the created placement group, or placement\_group.id when an existing group is reused (null when neither). |
-| <a name="output_security_groups"></a> [security\_groups](#output\_security\_groups) | Security groups created by the module (shared + per-group) keyed by 'shared' or group name, with id and full name. |
+| <a name="output_security_groups"></a> [security\_groups](#output\_security\_groups) | Security groups created by the module (shared + per-group) keyed by 'shared' or group name, with id, full name and srn. |
 | <a name="output_shared_security_group_id"></a> [shared\_security\_group\_id](#output\_shared\_security\_group\_id) | ID of the shared security group, or security\_group.id when an existing group is reused. |
 | <a name="output_ssh_key_id"></a> [ssh\_key\_id](#output\_ssh\_key\_id) | ID of the SSH key created by the module (null when ssh\_public\_key is not set). |
-| <a name="output_volumes"></a> [volumes](#output\_volumes) | Map of additional volumes created by the module keyed '<instance key>-vol-<NN>' with id, name and type ('local' or 'sbs'). |
+| <a name="output_volumes"></a> [volumes](#output\_volumes) | Map of additional volumes created by the module keyed '<instance key>-vol-<NN>' with id, name, srn and type ('local' or 'sbs'). |
 <!-- END_TF_DOCS -->
 
 ## Security Considerations
@@ -393,9 +401,9 @@ This module is provided "as is" without warranty of any kind. Use at your own ri
 
 [apache]: https://opensource.org/licenses/Apache-2.0
 [apache-shield]: https://img.shields.io/badge/License-Apache%202.0-blue.svg
-[terraform-badge]: https://img.shields.io/badge/Terraform-%3E%3D1.10-623CE4
+[terraform-badge]: https://img.shields.io/badge/Terraform-%3E%3D1.11.0-623CE4
 [terraform-url]: https://www.terraform.io
-[scaleway-badge]: https://img.shields.io/badge/Scaleway%20Provider-%3E%3D2.86-4f0599
+[scaleway-badge]: https://img.shields.io/badge/Scaleway%20Provider-%3E%3D2.93-4f0599
 [scaleway-url]: https://registry.terraform.io/providers/scaleway/scaleway/
 [release-badge]: https://img.shields.io/gitlab/v/release/leminnov/terraform/modules/scaleway-compute?include_prereleases&sort=semver
 [release-url]: https://gitlab.com/leminnov/terraform/modules/scaleway-compute/-/releases
