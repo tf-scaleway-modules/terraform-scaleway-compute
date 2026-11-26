@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+
 ## [4.0.1] - 2026-11-26
 - Rewrite input and output descriptions as single-line prose so they render on the Terraform Registry
 ## [4.0.0] - 2026-11-25
@@ -144,4 +145,3 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 - first commit
 - main merge
 - Initial commit
-
