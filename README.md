@@ -238,6 +238,68 @@ module.compute.security_groups["database"].id
 module.compute.security_groups
 ```
 
+### Input reference
+
+#### `instances`
+
+Map of instance groups, keyed by a stable group name used in resource names and tags. Every attribute except `count` and `instance_type` is optional.
+
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `count` | `number` | required | Number of servers in the group, from 0 to 50. `0` creates nothing. |
+| `instance_type` | `string` | required | Scaleway commercial type, for example `DEV1-S`, `GP1-M` or `PRO2-XXS`. |
+| `image` | `string` | `"ubuntu_noble"` | Image label or ID. |
+| `root_volume_size_gb` | `number` | `20` | Root volume size in GB. |
+| `root_volume_type` | `string` | `"l_ssd"` | `l_ssd` or `sbs_volume`. |
+| `root_volume_sbs_iops` | `number` | `null` | Only valid with `root_volume_type = "sbs_volume"`; `5000` or `15000`. `null` keeps the API default. |
+| `state` | `string` | `"started"` | `started`, `stopped` or `standby`. |
+| `enable_protection` | `bool` | `false` | Protects the servers against deletion through the Scaleway API; unprotect and apply before destroy. |
+| `tags` | `list(string)` | `[]` | Extra tags, added to the global `tags` and `group:<group>`. |
+| `cloud_init` | `string` | `null` | Cloud-init script, sent as the `cloud-init` user data key. |
+| `user_data` | `map(string)` | `{}` | Additional user data key-value pairs, merged with `cloud_init`. |
+| `create_public_ip` | `bool` | `true` | Create a public IP per server. |
+| `public_ip_type` | `string` | `"routed_ipv4"` | `routed_ipv4` or `routed_ipv6`. |
+| `enable_ipv6` | `bool` | `false` | Adds one `routed_ipv6` IP per server next to the `routed_ipv4` one; requires `create_public_ip = true` and `public_ip_type = "routed_ipv4"`. |
+| `private_networks` | `list(string)` | `[]` | Private network IDs for the group, at most 8. When empty the global `private_networks` apply. |
+| `enable_private_nic_security_group` | `bool` | `false` | Applies the security group resolved for the servers to their private NICs. With a default-drop inbound policy this blocks private traffic that no rule allows. |
+| `security_group` | `object` | `{}` | Per-group security group, same shape as the global `security_group`. Every field is optional and `null` inherits the global value. `id` cannot be combined with rules. |
+| `placement_group_id` | `string` | `null` | Existing placement group for the group; `null` uses the shared placement group. |
+| `enable_backup_snapshot` | `bool` | `false` | Create a snapshot of the root volume. |
+| `additional_volumes` | `list(object)` | `[]` | Extra volumes per server: `size_gb` (required), `type` (`l_ssd`, `sbs_5k` or `sbs_15k`, default `sbs_5k`) and `iops` (default `null`). |
+| `external_volume_ids` | `list(string)` | `[]` | Existing block volumes to attach. A block volume attaches to one instance at a time, so this is only valid when `count <= 1` (enforced by a precondition on `scaleway_instance_server.this`). |
+
+#### `security_group` and `instances[*].security_group`
+
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `id` | `string` | `null` | Existing group to reuse; nothing is created and rules cannot be combined with it. |
+| `inbound_default_policy` | `string` | `"drop"` (per group: inherits) | `accept` or `drop`. |
+| `outbound_default_policy` | `string` | `"accept"` (per group: inherits) | `accept` or `drop`. |
+| `stateful` | `bool` | `true` (per group: inherits) | Whether the group is stateful. |
+| `inbound_rules` | `list(object)` | `[]` (per group: inherits) | Inbound rules; the default has no rule, so add SSH explicitly. |
+| `outbound_rules` | `list(object)` | `[]` (per group: inherits) | Outbound rules. |
+
+Each rule has `action` (default `accept`), `protocol` (`TCP`, `UDP`, `ICMP` or `ANY`, default `TCP`), `port` (number, default `null`), `port_range` (string, default `null`; not together with `port`) and `ip_range` (IPv4 or IPv6 CIDR, default `0.0.0.0/0`).
+
+#### `placement_group`
+
+| Value | Effect |
+|-------|--------|
+| `null` (default) | No placement group is created. |
+| `{}` | Creates one with `policy_type = "max_availability"`. |
+| `{ policy_type = "low_latency" }` | Creates one with that policy (`low_latency` or `max_availability`). |
+| `{ id = "..." }` | Reuses an existing group; `policy_type` cannot be combined with `id`. |
+
+### Output reference
+
+| Output | Key | Attributes |
+|--------|-----|------------|
+| `security_groups` | `shared` or the group name | `id`, `name` (full name), `srn` |
+| `volumes` | `<instance key>-vol-<NN>` | `id`, `name`, `srn`, `type` (`local` or `sbs`) |
+| `instances` | `<group>-<NN>` | `id`, `name`, `type`, `state`, `zone`, `srn`, `public_ips`, `private_ips` (lists of addresses) |
+| `instances_by_group` | group name, then `<group>-<NN>` | `id`, `name`, `srn`, `public_ips`, `private_ips` |
+| `backup_snapshots` | instance key | `id`, `name`, `srn`, `type` (`instance` for `l_ssd` roots, `block` for `sbs_volume` roots) |
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -279,13 +341,13 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_instances"></a> [instances](#input\_instances) | Map of instance groups to create. Each group can have different count, type, image, etc. A group security\_group follows the global security\_group shape; unset fields inherit the global value. | <pre>map(object({<br/>    count               = number<br/>    instance_type       = string<br/>    image               = optional(string, "ubuntu_noble")<br/>    root_volume_size_gb = optional(number, 20)<br/>    root_volume_type    = optional(string, "l_ssd")<br/>    # Only valid with root_volume_type = "sbs_volume" (5000 or 15000); null keeps the API default.<br/>    root_volume_sbs_iops = optional(number)<br/>    state                = optional(string, "started")<br/>    # Protects the servers against deletion through the Scaleway API; unprotect and apply before destroy.<br/>    enable_protection = optional(bool, false)<br/>    tags              = optional(list(string), [])<br/>    cloud_init        = optional(string)<br/>    user_data         = optional(map(string), {})<br/>    create_public_ip  = optional(bool, true)<br/>    public_ip_type    = optional(string, "routed_ipv4")<br/>    # Adds one routed_ipv6 IP per server next to the routed_ipv4 one.<br/>    enable_ipv6      = optional(bool, false)<br/>    private_networks = optional(list(string), [])<br/>    # Applies the security group resolved for the servers to their private NICs. With a<br/>    # default-drop inbound policy this blocks private traffic that no rule allows.<br/>    enable_private_nic_security_group = optional(bool, false)<br/>    # Every field is optional and null inherits the global security_group value.<br/>    # DEVIATION(terraform-variables): defaults to {} (all fields null) instead of null, so locals read the fields without try().<br/>    security_group = optional(object({<br/>      id                      = optional(string)<br/>      inbound_default_policy  = optional(string)<br/>      outbound_default_policy = optional(string)<br/>      stateful                = optional(bool)<br/>      inbound_rules = optional(list(object({<br/>        action     = optional(string, "accept")<br/>        protocol   = optional(string, "TCP")<br/>        port       = optional(number)<br/>        port_range = optional(string)<br/>        ip_range   = optional(string, "0.0.0.0/0")<br/>      })))<br/>      outbound_rules = optional(list(object({<br/>        action     = optional(string, "accept")<br/>        protocol   = optional(string, "TCP")<br/>        port       = optional(number)<br/>        port_range = optional(string)<br/>        ip_range   = optional(string, "0.0.0.0/0")<br/>      })))<br/>    }), {})<br/>    placement_group_id     = optional(string)<br/>    enable_backup_snapshot = optional(bool, false)<br/>    additional_volumes = optional(list(object({<br/>      size_gb = number<br/>      type    = optional(string, "sbs_5k")<br/>      iops    = optional(number)<br/>    })), [])<br/>    # Block volumes can only be attached to ONE instance at a time, so external_volume_ids<br/>    # is only valid when count <= 1. Enforced by precondition on scaleway_instance_server.this.<br/>    external_volume_ids = optional(list(string), [])<br/>  }))</pre> | n/a | yes |
+| <a name="input_instances"></a> [instances](#input\_instances) | Map of instance groups to create, keyed by a stable group name used in resource names and tags. Each group sets its own `count`, `instance_type`, image, volumes and network. See Input reference in the README for every attribute. | <pre>map(object({<br/>    count                             = number<br/>    instance_type                     = string<br/>    image                             = optional(string, "ubuntu_noble")<br/>    root_volume_size_gb               = optional(number, 20)<br/>    root_volume_type                  = optional(string, "l_ssd")<br/>    root_volume_sbs_iops              = optional(number)<br/>    state                             = optional(string, "started")<br/>    enable_protection                 = optional(bool, false)<br/>    tags                              = optional(list(string), [])<br/>    cloud_init                        = optional(string)<br/>    user_data                         = optional(map(string), {})<br/>    create_public_ip                  = optional(bool, true)<br/>    public_ip_type                    = optional(string, "routed_ipv4")<br/>    enable_ipv6                       = optional(bool, false)<br/>    private_networks                  = optional(list(string), [])<br/>    enable_private_nic_security_group = optional(bool, false)<br/>    security_group = optional(object({<br/>      id                      = optional(string)<br/>      inbound_default_policy  = optional(string)<br/>      outbound_default_policy = optional(string)<br/>      stateful                = optional(bool)<br/>      inbound_rules = optional(list(object({<br/>        action     = optional(string, "accept")<br/>        protocol   = optional(string, "TCP")<br/>        port       = optional(number)<br/>        port_range = optional(string)<br/>        ip_range   = optional(string, "0.0.0.0/0")<br/>      })))<br/>      outbound_rules = optional(list(object({<br/>        action     = optional(string, "accept")<br/>        protocol   = optional(string, "TCP")<br/>        port       = optional(number)<br/>        port_range = optional(string)<br/>        ip_range   = optional(string, "0.0.0.0/0")<br/>      })))<br/>    }), {})<br/>    placement_group_id     = optional(string)<br/>    enable_backup_snapshot = optional(bool, false)<br/>    additional_volumes = optional(list(object({<br/>      size_gb = number<br/>      type    = optional(string, "sbs_5k")<br/>      iops    = optional(number)<br/>    })), [])<br/>    external_volume_ids = optional(list(string), [])<br/>  }))</pre> | n/a | yes |
 | <a name="input_name"></a> [name](#input\_name) | Workload name used as a prefix for resource naming and tagging. | `string` | n/a | yes |
-| <a name="input_placement_group"></a> [placement\_group](#input\_placement\_group) | Shared placement group. Null creates none, {} creates one (policy\_type defaults to max\_availability), { id } reuses an existing group. policy\_type is low\_latency or max\_availability and applies only to a created group. | <pre>object({<br/>    id          = optional(string)<br/>    policy_type = optional(string)<br/>  })</pre> | `null` | no |
-| <a name="input_private_networks"></a> [private\_networks](#input\_private\_networks) | IDs of the private networks attached to every instance whose group sets no private\_networks (one private NIC per server and network). | `list(string)` | `[]` | no |
+| <a name="input_placement_group"></a> [placement\_group](#input\_placement\_group) | Shared placement group. `null` creates none, `{}` creates one (`policy_type` defaults to `max_availability`), `{ id = "..." }` reuses an existing group. `policy_type` is `low_latency` or `max_availability` and applies only to a created group. | <pre>object({<br/>    id          = optional(string)<br/>    policy_type = optional(string)<br/>  })</pre> | `null` | no |
+| <a name="input_private_networks"></a> [private\_networks](#input\_private\_networks) | IDs of the private networks attached to every instance whose group sets no `private_networks`, with one private NIC per server and network. | `list(string)` | `[]` | no |
 | <a name="input_project_id"></a> [project\_id](#input\_project\_id) | Scaleway Project ID where all resources are created. Null uses the provider default project. | `string` | `null` | no |
-| <a name="input_security_group"></a> [security\_group](#input\_security\_group) | Shared security group. With id set, that existing group is used and nothing is created (rules cannot be combined with id); otherwise one is created. Inbound traffic is dropped unless inbound\_rules allow it: the default has no rule, so add SSH explicitly. | <pre>object({<br/>    id                      = optional(string)<br/>    inbound_default_policy  = optional(string, "drop")<br/>    outbound_default_policy = optional(string, "accept")<br/>    stateful                = optional(bool, true)<br/>    inbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })), [])<br/>    outbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })), [])<br/>  })</pre> | `{}` | no |
-| <a name="input_ssh_public_key"></a> [ssh\_public\_key](#input\_ssh\_public\_key) | SSH public key content (e.g. file("~/.ssh/id\_ed25519.pub")); the IAM SSH key is created when set. A public key is not a secret: it is sensitive only to keep it out of plan output, is not ephemeral because scaleway\_iam\_ssh\_key has no write-only argument, and is stored in state. Scaleway scopes the key to the Project and copies it to every Instance of the Project at boot. | `string` | `null` | no |
+| <a name="input_security_group"></a> [security\_group](#input\_security\_group) | Shared security group. With `id` set that existing group is used and nothing is created, and rules cannot be combined with it; otherwise one is created. Inbound traffic is dropped unless `inbound_rules` allow it, so add SSH explicitly. | <pre>object({<br/>    id                      = optional(string)<br/>    inbound_default_policy  = optional(string, "drop")<br/>    outbound_default_policy = optional(string, "accept")<br/>    stateful                = optional(bool, true)<br/>    inbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })), [])<br/>    outbound_rules = optional(list(object({<br/>      action     = optional(string, "accept")<br/>      protocol   = optional(string, "TCP")<br/>      port       = optional(number)<br/>      port_range = optional(string)<br/>      ip_range   = optional(string, "0.0.0.0/0")<br/>    })), [])<br/>  })</pre> | `{}` | no |
+| <a name="input_ssh_public_key"></a> [ssh\_public\_key](#input\_ssh\_public\_key) | SSH public key content, for example the result of `file("~/.ssh/id_ed25519.pub")`; the IAM SSH key is created when set and `null` creates none. Scaleway scopes the key to the Project and copies it to every Instance of the Project at boot. See SSH Key in the README for the sensitivity and state notes. | `string` | `null` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Global tags applied to all resources. | `list(string)` | `[]` | no |
 | <a name="input_timeouts"></a> [timeouts](#input\_timeouts) | Create, update and delete timeouts for the instances. Other resources keep the provider defaults. | <pre>object({<br/>    create = optional(string, "10m")<br/>    update = optional(string, "10m")<br/>    delete = optional(string, "10m")<br/>  })</pre> | `{}` | no |
 | <a name="input_zone"></a> [zone](#input\_zone) | Scaleway zone (e.g., fr-par-1, nl-ams-1). Null uses the provider default zone. | `string` | `null` | no |
@@ -294,14 +356,14 @@ No modules.
 
 | Name | Description |
 | ---- | ----------- |
-| <a name="output_backup_snapshots"></a> [backup\_snapshots](#output\_backup\_snapshots) | Root volume backup snapshots keyed by instance key with id, name, srn and type ('instance' for l\_ssd roots, 'block' for sbs\_volume roots). |
-| <a name="output_instances"></a> [instances](#output\_instances) | Map of all instances keyed by '<group>-<NN>' with id, name, type, state, zone, srn, public\_ips and private\_ips (lists of addresses). |
-| <a name="output_instances_by_group"></a> [instances\_by\_group](#output\_instances\_by\_group) | Instances grouped by their instance group name, each with id, name, srn, public\_ips and private\_ips. |
-| <a name="output_placement_group_id"></a> [placement\_group\_id](#output\_placement\_group\_id) | ID of the created placement group, or placement\_group.id when an existing group is reused (null when neither). |
-| <a name="output_security_groups"></a> [security\_groups](#output\_security\_groups) | Security groups created by the module (shared + per-group) keyed by 'shared' or group name, with id, full name and srn. |
-| <a name="output_shared_security_group_id"></a> [shared\_security\_group\_id](#output\_shared\_security\_group\_id) | ID of the shared security group, or security\_group.id when an existing group is reused. |
-| <a name="output_ssh_key_id"></a> [ssh\_key\_id](#output\_ssh\_key\_id) | ID of the SSH key created by the module (null when ssh\_public\_key is not set). |
-| <a name="output_volumes"></a> [volumes](#output\_volumes) | Map of additional volumes created by the module keyed '<instance key>-vol-<NN>' with id, name, srn and type ('local' or 'sbs'). |
+| <a name="output_backup_snapshots"></a> [backup\_snapshots](#output\_backup\_snapshots) | Root volume backup snapshots, keyed by instance key. See Output reference in the README for the attributes. |
+| <a name="output_instances"></a> [instances](#output\_instances) | Map of all instances, keyed by the group name plus a two-digit index. See Output reference in the README for the attributes. |
+| <a name="output_instances_by_group"></a> [instances\_by\_group](#output\_instances\_by\_group) | Instances grouped by their instance group name, each group a map keyed like `instances`. See Output reference in the README for the attributes. |
+| <a name="output_placement_group_id"></a> [placement\_group\_id](#output\_placement\_group\_id) | ID of the created placement group, or `placement_group.id` when an existing group is reused (`null` when neither). |
+| <a name="output_security_groups"></a> [security\_groups](#output\_security\_groups) | Security groups created by the module, keyed by `shared` or by group name. See Output reference in the README for the attributes. |
+| <a name="output_shared_security_group_id"></a> [shared\_security\_group\_id](#output\_shared\_security\_group\_id) | ID of the shared security group, or `security_group.id` when an existing group is reused. |
+| <a name="output_ssh_key_id"></a> [ssh\_key\_id](#output\_ssh\_key\_id) | ID of the SSH key created by the module (`null` when `ssh_public_key` is not set). |
+| <a name="output_volumes"></a> [volumes](#output\_volumes) | Map of additional volumes created by the module, keyed by the instance key plus `-vol-` and a two-digit index. See Output reference in the README for the attributes. |
 <!-- END_TF_DOCS -->
 
 ## Security Considerations
@@ -377,7 +439,7 @@ The module has no input to ignore tag drift caused by external systems. `lifecyc
 
 ## SSH Key
 
-When `ssh_public_key` is set (for example `file("~/.ssh/id_ed25519.pub")`) the module creates one IAM SSH key; there is no separate switch or file input. Scaleway scopes IAM SSH keys to the Project and copies them to every Instance of the Project, not only the ones created by this module, when the Instance boots. The module creates the key before the servers so it is present at their first boot; for existing Instances, reboot them or run `scw-fetch-ssh-keys --upgrade`. The key is a public key: `ssh_public_key` is `sensitive` only to keep it out of plan output, and it is stored in state.
+When `ssh_public_key` is set (for example `file("~/.ssh/id_ed25519.pub")`) the module creates one IAM SSH key; there is no separate switch or file input. Scaleway scopes IAM SSH keys to the Project and copies them to every Instance of the Project, not only the ones created by this module, when the Instance boots. The module creates the key before the servers so it is present at their first boot; for existing Instances, reboot them or run `scw-fetch-ssh-keys --upgrade`. The key is a public key: `ssh_public_key` is `sensitive` only to keep it out of plan output, it is not `ephemeral` because `scaleway_iam_ssh_key` has no write-only argument, and it is stored in state.
 
 ## Contributing
 

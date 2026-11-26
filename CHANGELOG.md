@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.1] - 2026-11-26
+- Rewrite input and output descriptions as single-line prose so they render on the Terraform Registry
+
 ## [4.0.0] - 2026-11-25
 - Require OpenTofu or Terraform 1.11.0, validate with both and expose srn in the outputs
 
