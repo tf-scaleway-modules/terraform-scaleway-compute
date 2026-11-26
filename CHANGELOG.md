@@ -4,7 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [4.0.1] - 2026-11-26
 - Rewrite input and output descriptions as single-line prose so they render on the Terraform Registry
-
 ## [4.0.0] - 2026-11-25
 - Require OpenTofu or Terraform 1.11.0, validate with both and expose srn in the outputs
 
@@ -17,9 +16,11 @@ workflows to OpenTofu 1.13.10 and run the pre-commit Terraform hooks with tofu.
 BREAKING: required_version moves from >= 1.10.7 to >= 1.11.0 and the scaleway
 provider from ~> 2.89 to ~> 2.93. Consumers need OpenTofu or Terraform >= 1.11.0
 and scaleway provider >= 2.93 (run tofu init -upgrade).
+## [3.0.1] - 2026-11-25
 - Fix validation with provider 2.92.0+ by dropping the timeouts block from SBS block volumes
 
 Provider 2.92.0 moved scaleway_block_volume to the plugin framework and removed its timeouts block, so any fresh init (~> 2.89 resolves to 2.93) failed tofu validate. The timeouts input now applies to instances only; block volumes keep the provider defaults.
+## [3.0.0] - 2026-11-01
 - Add private NIC security groups, IPv6 IPs and SBS root backups; replace the project lookup with project_id
 
 BREAKING: v3.0.0 reworks inputs, outputs and defaults; provider ~> 2.89.
@@ -44,12 +45,14 @@ BREAKING: v3.0.0 reworks inputs, outputs and defaults; provider ~> 2.89.
   and private_ips are removed; instances expose address lists.
 
 See "Upgrading from v2 to v3" in the README.
+## [2.2.0] - 2026-10-31
 - Add SBS root volume with IOPS and deletion protection to instance groups
 
 Groups accept root_volume_type "sbs_volume" with an optional
 root_volume_sbs_iops (5000 or 15000) and enable_protection to reject
 server deletion through the API. SBS roots cannot use backup snapshots.
 Provider floor stays ~> 2.86; minor release, no input or output removed.
+## [2.1.2] - 2026-10-28
 - Validate group-level rules and CIDRs, warn on ignored inputs, fix README
 
 - Group-level inbound_rules/outbound_rules and default policies get the same validation as the global variables.
@@ -59,6 +62,7 @@ Provider floor stays ~> 2.86; minor release, no input or output removed.
 Configurations that already failed at apply now fail at plan; no other upgrade action.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+## [2.1.1] - 2026-10-28
 - Install mise 2026.10.17 in CI to avoid the GitHub API rate limit
 
 The pre-commit job installed an old mise that resolves every tool through api.github.com without a token, and failed with 403 rate-limit errors on the shared office runner whenever its cache was cold (new refs such as merge requests and tags). mise 2026.9.14 and later resolve releases through mise-versions.jdx.dev.
@@ -89,6 +93,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
   own copy on the runner disk.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+## [2.1.0] - 2026-10-14
 - chore(deps): upgrade scaleway provider to ~> 2.86
 
 - Bump the scaleway provider constraint to ~> 2.86 (module and examples).
