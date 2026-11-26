@@ -3,7 +3,7 @@
 # ==============================================================================
 
 output "ssh_key_id" {
-  description = "ID of the SSH key created by the module (null when ssh_public_key is not set)."
+  description = "ID of the SSH key created by the module (`null` when `ssh_public_key` is not set)."
   value       = one(scaleway_iam_ssh_key.this[*].id)
 }
 
@@ -12,12 +12,12 @@ output "ssh_key_id" {
 # ==============================================================================
 
 output "shared_security_group_id" {
-  description = "ID of the shared security group, or security_group.id when an existing group is reused."
+  description = "ID of the shared security group, or `security_group.id` when an existing group is reused."
   value       = local.shared_security_group_id
 }
 
 output "security_groups" {
-  description = "Security groups created by the module (shared + per-group) keyed by 'shared' or group name, with id, full name and srn."
+  description = "Security groups created by the module, keyed by `shared` or by group name. See Output reference in the README for the attributes."
   value = merge(
     { for sg in scaleway_instance_security_group.shared : "shared" => { id = sg.id, name = sg.name, srn = sg.srn } },
     { for k, v in scaleway_instance_security_group.group : k => { id = v.id, name = v.name, srn = v.srn } }
@@ -29,7 +29,7 @@ output "security_groups" {
 # ==============================================================================
 
 output "placement_group_id" {
-  description = "ID of the created placement group, or placement_group.id when an existing group is reused (null when neither)."
+  description = "ID of the created placement group, or `placement_group.id` when an existing group is reused (`null` when neither)."
   value       = local.placement_group_id
 }
 
@@ -38,7 +38,7 @@ output "placement_group_id" {
 # ==============================================================================
 
 output "volumes" {
-  description = "Map of additional volumes created by the module keyed '<instance key>-vol-<NN>' with id, name, srn and type ('local' or 'sbs')."
+  description = "Map of additional volumes created by the module, keyed by the instance key plus `-vol-` and a two-digit index. See Output reference in the README for the attributes."
   value = merge(
     { for k, v in scaleway_instance_volume.this : k => { id = v.id, name = v.name, type = "local", srn = v.srn } },
     { for k, v in scaleway_block_volume.this : k => { id = v.id, name = v.name, type = "sbs", srn = v.srn } },
@@ -50,7 +50,7 @@ output "volumes" {
 # ==============================================================================
 
 output "instances" {
-  description = "Map of all instances keyed by '<group>-<NN>' with id, name, type, state, zone, srn, public_ips and private_ips (lists of addresses)."
+  description = "Map of all instances, keyed by the group name plus a two-digit index. See Output reference in the README for the attributes."
   value = {
     for k, v in scaleway_instance_server.this : k => {
       id          = v.id
@@ -66,7 +66,7 @@ output "instances" {
 }
 
 output "instances_by_group" {
-  description = "Instances grouped by their instance group name, each with id, name, srn, public_ips and private_ips."
+  description = "Instances grouped by their instance group name, each group a map keyed like `instances`. See Output reference in the README for the attributes."
   value = {
     for group_name in distinct([for k, v in local.instances_flat : v.group_name]) :
     group_name => {
@@ -86,7 +86,7 @@ output "instances_by_group" {
 # ==============================================================================
 
 output "backup_snapshots" {
-  description = "Root volume backup snapshots keyed by instance key with id, name, srn and type ('instance' for l_ssd roots, 'block' for sbs_volume roots)."
+  description = "Root volume backup snapshots, keyed by instance key. See Output reference in the README for the attributes."
   value = merge(
     { for k, v in scaleway_instance_snapshot.this : k => { id = v.id, name = v.name, type = "instance", srn = v.srn } },
     { for k, v in scaleway_block_snapshot.this : k => { id = v.id, name = v.name, type = "block", srn = v.srn } },

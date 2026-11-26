@@ -7,32 +7,26 @@ variable "name" {
   type        = string
 }
 
+# DEVIATION(terraform-variables): the per-group security_group defaults to {} (all fields null) instead of null, so locals read the fields without try().
 variable "instances" {
-  description = "Map of instance groups to create. Each group can have different count, type, image, etc. A group security_group follows the global security_group shape; unset fields inherit the global value."
+  description = "Map of instance groups to create, keyed by a stable group name used in resource names and tags. Each group sets its own `count`, `instance_type`, image, volumes and network. See Input reference in the README for every attribute."
   type = map(object({
-    count               = number
-    instance_type       = string
-    image               = optional(string, "ubuntu_noble")
-    root_volume_size_gb = optional(number, 20)
-    root_volume_type    = optional(string, "l_ssd")
-    # Only valid with root_volume_type = "sbs_volume" (5000 or 15000); null keeps the API default.
-    root_volume_sbs_iops = optional(number)
-    state                = optional(string, "started")
-    # Protects the servers against deletion through the Scaleway API; unprotect and apply before destroy.
-    enable_protection = optional(bool, false)
-    tags              = optional(list(string), [])
-    cloud_init        = optional(string)
-    user_data         = optional(map(string), {})
-    create_public_ip  = optional(bool, true)
-    public_ip_type    = optional(string, "routed_ipv4")
-    # Adds one routed_ipv6 IP per server next to the routed_ipv4 one.
-    enable_ipv6      = optional(bool, false)
-    private_networks = optional(list(string), [])
-    # Applies the security group resolved for the servers to their private NICs. With a
-    # default-drop inbound policy this blocks private traffic that no rule allows.
+    count                             = number
+    instance_type                     = string
+    image                             = optional(string, "ubuntu_noble")
+    root_volume_size_gb               = optional(number, 20)
+    root_volume_type                  = optional(string, "l_ssd")
+    root_volume_sbs_iops              = optional(number)
+    state                             = optional(string, "started")
+    enable_protection                 = optional(bool, false)
+    tags                              = optional(list(string), [])
+    cloud_init                        = optional(string)
+    user_data                         = optional(map(string), {})
+    create_public_ip                  = optional(bool, true)
+    public_ip_type                    = optional(string, "routed_ipv4")
+    enable_ipv6                       = optional(bool, false)
+    private_networks                  = optional(list(string), [])
     enable_private_nic_security_group = optional(bool, false)
-    # Every field is optional and null inherits the global security_group value.
-    # DEVIATION(terraform-variables): defaults to {} (all fields null) instead of null, so locals read the fields without try().
     security_group = optional(object({
       id                      = optional(string)
       inbound_default_policy  = optional(string)
@@ -60,8 +54,6 @@ variable "instances" {
       type    = optional(string, "sbs_5k")
       iops    = optional(number)
     })), [])
-    # Block volumes can only be attached to ONE instance at a time, so external_volume_ids
-    # is only valid when count <= 1. Enforced by precondition on scaleway_instance_server.this.
     external_volume_ids = optional(list(string), [])
   }))
 
@@ -224,7 +216,7 @@ variable "tags" {
 # ==============================================================================
 
 variable "ssh_public_key" {
-  description = "SSH public key content (e.g. file(\"~/.ssh/id_ed25519.pub\")); the IAM SSH key is created when set. A public key is not a secret: it is sensitive only to keep it out of plan output, is not ephemeral because scaleway_iam_ssh_key has no write-only argument, and is stored in state. Scaleway scopes the key to the Project and copies it to every Instance of the Project at boot."
+  description = "SSH public key content, for example the result of `file(\"~/.ssh/id_ed25519.pub\")`; the IAM SSH key is created when set and `null` creates none. Scaleway scopes the key to the Project and copies it to every Instance of the Project at boot. See SSH Key in the README for the sensitivity and state notes."
   type        = string
   default     = null
   sensitive   = true
@@ -235,7 +227,7 @@ variable "ssh_public_key" {
 # ==============================================================================
 
 variable "security_group" {
-  description = "Shared security group. With id set, that existing group is used and nothing is created (rules cannot be combined with id); otherwise one is created. Inbound traffic is dropped unless inbound_rules allow it: the default has no rule, so add SSH explicitly."
+  description = "Shared security group. With `id` set that existing group is used and nothing is created, and rules cannot be combined with it; otherwise one is created. Inbound traffic is dropped unless `inbound_rules` allow it, so add SSH explicitly."
   type = object({
     id                      = optional(string)
     inbound_default_policy  = optional(string, "drop")
@@ -303,7 +295,7 @@ variable "security_group" {
 # ==============================================================================
 
 variable "placement_group" {
-  description = "Shared placement group. Null creates none, {} creates one (policy_type defaults to max_availability), { id } reuses an existing group. policy_type is low_latency or max_availability and applies only to a created group."
+  description = "Shared placement group. `null` creates none, `{}` creates one (`policy_type` defaults to `max_availability`), `{ id = \"...\" }` reuses an existing group. `policy_type` is `low_latency` or `max_availability` and applies only to a created group."
   type = object({
     id          = optional(string)
     policy_type = optional(string)
@@ -326,7 +318,7 @@ variable "placement_group" {
 # ==============================================================================
 
 variable "private_networks" {
-  description = "IDs of the private networks attached to every instance whose group sets no private_networks (one private NIC per server and network)."
+  description = "IDs of the private networks attached to every instance whose group sets no `private_networks`, with one private NIC per server and network."
   type        = list(string)
   default     = []
 
