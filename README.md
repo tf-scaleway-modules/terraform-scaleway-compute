@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tf-scaleway-modules/.github/main/profile/assets/tf-scaleway-modules-logo.png" alt="TF Scaleway Modules" width="600">
+  <img src="https://raw.githubusercontent.com/tf-scaleway-modules/.github/main/profile/assets/modules/tf-scaleway-compute-logo.png" alt="TF Scaleway Compute" width="600">
 </p>
 
 # Scaleway Compute Terraform Module
