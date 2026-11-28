@@ -1,9 +1,15 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/tf-scaleway-modules/.github/main/profile/assets/tf-scaleway-modules-logo.png" alt="TF Scaleway Modules" width="600">
+</p>
+
 # Scaleway Compute Terraform Module
 
-[![Apache 2.0][apache-shield]][apache]
-[![Terraform][terraform-badge]][terraform-url]
-[![Scaleway Provider][scaleway-badge]][scaleway-url]
-[![Latest Release][release-badge]][release-url]
+[![License: Apache 2.0][apache-shield]][apache]
+[![OpenTofu | Terraform >= 1.11][terraform-badge]][terraform-url]
+[![Scaleway provider ~> 2.93][scaleway-badge]][scaleway-url]
+[![Latest release][release-badge]][release-url]
+[![Pipeline status][pipeline-badge]][pipeline-url]
+[![GitHub mirror][github-badge]][github-url]
 
 A production-ready Terraform module for creating and managing **Scaleway** Compute infrastructure.
 
@@ -461,11 +467,15 @@ Copyright 2025 - This module is independently maintained and not affiliated with
 
 This module is provided "as is" without warranty of any kind. Always test in non-production environments first.
 
+[apache-shield]: https://img.shields.io/badge/License-Apache%202.0-blue
 [apache]: https://opensource.org/licenses/Apache-2.0
-[apache-shield]: https://img.shields.io/badge/License-Apache%202.0-blue.svg
-[terraform-badge]: https://img.shields.io/badge/Terraform-%3E%3D1.11.0-623CE4
-[terraform-url]: https://www.terraform.io
-[scaleway-badge]: https://img.shields.io/badge/Scaleway%20Provider-%3E%3D2.93-4f0599
-[scaleway-url]: https://registry.terraform.io/providers/scaleway/scaleway/
-[release-badge]: https://img.shields.io/gitlab/v/release/leminnov/terraform/modules/scaleway-compute?include_prereleases&sort=semver
+[terraform-badge]: https://img.shields.io/badge/OpenTofu%20%7C%20Terraform-%E2%89%A5%201.11-7B42BC
+[terraform-url]: https://opentofu.org
+[scaleway-badge]: https://img.shields.io/badge/Scaleway%20provider-~%3E%202.93-4F0599
+[scaleway-url]: https://registry.terraform.io/providers/scaleway/scaleway/latest
+[release-badge]: https://img.shields.io/gitlab/v/release/leminnov/terraform/modules/scaleway-compute?sort=semver&logo=gitlab
 [release-url]: https://gitlab.com/leminnov/terraform/modules/scaleway-compute/-/releases
+[pipeline-badge]: https://gitlab.com/leminnov/terraform/modules/scaleway-compute/badges/main/pipeline.svg
+[pipeline-url]: https://gitlab.com/leminnov/terraform/modules/scaleway-compute/-/pipelines?ref=main
+[github-badge]: https://img.shields.io/badge/GitHub-mirror-181717?logo=github
+[github-url]: https://github.com/tf-scaleway-modules/terraform-scaleway-compute
