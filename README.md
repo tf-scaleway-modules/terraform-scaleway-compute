@@ -453,13 +453,13 @@ Changes are planned with [OpenSpec](https://github.com/Fission-AI/OpenSpec): `op
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for full details.
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
 
 Copyright 2025 - This module is independently maintained and not affiliated with Scaleway.
 
 ## Disclaimer
 
-This module is provided "as is" without warranty of any kind. Use at your own risk.
+This module is provided "as is" without warranty of any kind. Always test in non-production environments first.
 
 [apache]: https://opensource.org/licenses/Apache-2.0
 [apache-shield]: https://img.shields.io/badge/License-Apache%202.0-blue.svg
